@@ -1,7 +1,9 @@
-import { ArrowDownRight, ArrowUpRight, Wallet, User } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Users, Wallet, User } from "lucide-react";
 import DashboardMonthPicker from "./DashboardMonthPicker";
 import { formatCurrencyARS } from "../lib/format";
 import { getMonthlySummary } from "../lib/summary";
+import { getMonthlyBudgets } from "../lib/budgets";
+import { getMonthlyPersonBudgets } from "../lib/personBudgets";
 
 function currentMonthYYYYMM(): string {
   const d = new Date();
@@ -18,9 +20,18 @@ export default async function Page({
   const month = searchParams?.month ?? currentMonthYYYYMM();
   const summary = await getMonthlySummary(month);
 
+  const budgets = await getMonthlyBudgets(month);
+  const personBudgets = await getMonthlyPersonBudgets(month);
+
   const totalIncome = summary.totals.income;
   const totalExpense = summary.totals.expense;
   const balance = summary.totals.balance;
+
+  const catOver = budgets.rows.filter((r) => r.status === "over").slice(0, 6);
+  const catWarn = budgets.rows.filter((r) => r.status === "warn").slice(0, 6);
+
+  const pOver = personBudgets.rows.filter((r) => r.status === "over").slice(0, 6);
+  const pWarn = personBudgets.rows.filter((r) => r.status === "warn").slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -112,6 +123,55 @@ export default async function Page({
           )}
         </div>
       </div>
+
+      <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-semibold">Alertas de presupuesto por categoría</div>
+            <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
+              Configurá en /budgets
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <AlertBoxCategory title="Excedidos" rows={catOver} variant="over" />
+          <AlertBoxCategory title="Cerca del límite (≥ 80%)" rows={catWarn} variant="warn" />
+        </div>
+
+        {catOver.length === 0 && catWarn.length === 0 && (
+          <div className="mt-3 text-sm text-[rgb(var(--subtext))]">
+            No hay alertas por categoría este mes.
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-start gap-2">
+            <div className="grid h-9 w-9 place-items-center rounded-2xl bg-[rgba(var(--brand),0.10)] text-[rgb(var(--brand-dark))]">
+              <Users size={16} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold">Alertas de presupuesto por persona</div>
+              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
+                Configurá en /person-budgets
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <AlertBoxPerson title="Excedidos" rows={pOver} variant="over" />
+          <AlertBoxPerson title="Cerca del límite (≥ 80%)" rows={pWarn} variant="warn" />
+        </div>
+
+        {pOver.length === 0 && pWarn.length === 0 && (
+          <div className="mt-3 text-sm text-[rgb(var(--subtext))]">
+            No hay alertas por persona este mes.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -138,6 +198,86 @@ function KpiCard({
       <div className={`mt-3 text-2xl font-semibold tabular-nums ${positive ? "text-emerald-600" : ""}`}>
         {value}
       </div>
+    </div>
+  );
+}
+
+function AlertBoxCategory({
+  title,
+  rows,
+  variant,
+}: {
+  title: string;
+  rows: Array<{ categoryName: string; budget: number; spent: number; percent: number }>;
+  variant: "over" | "warn";
+}) {
+  const cls = variant === "over" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50";
+
+  return (
+    <div className={`rounded-2xl border ${cls} p-3`}>
+      <div className="text-sm font-semibold">{title}</div>
+
+      {rows.length === 0 ? (
+        <div className="mt-2 text-xs text-[rgb(var(--subtext))]">Sin items.</div>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {rows.map((r) => (
+            <div
+              key={r.categoryName}
+              className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold">{r.categoryName}</div>
+                <div className="text-xs font-semibold tabular-nums">{Math.round(r.percent)}%</div>
+              </div>
+              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
+                Gastado: <span className="font-semibold">{formatCurrencyARS(-Math.abs(r.spent))}</span> ·
+                Presupuesto: <span className="font-semibold">{formatCurrencyARS(r.budget)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlertBoxPerson({
+  title,
+  rows,
+  variant,
+}: {
+  title: string;
+  rows: Array<{ personName: string; budget: number; spent: number; percent: number }>;
+  variant: "over" | "warn";
+}) {
+  const cls = variant === "over" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50";
+
+  return (
+    <div className={`rounded-2xl border ${cls} p-3`}>
+      <div className="text-sm font-semibold">{title}</div>
+
+      {rows.length === 0 ? (
+        <div className="mt-2 text-xs text-[rgb(var(--subtext))]">Sin items.</div>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {rows.map((r) => (
+            <div
+              key={r.personName}
+              className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold">{r.personName}</div>
+                <div className="text-xs font-semibold tabular-nums">{Math.round(r.percent)}%</div>
+              </div>
+              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
+                Gastado: <span className="font-semibold">{formatCurrencyARS(-Math.abs(r.spent))}</span> ·
+                Tope: <span className="font-semibold">{formatCurrencyARS(r.budget)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
