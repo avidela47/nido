@@ -1,29 +1,52 @@
-import { Search } from "lucide-react";
+"use client";
 
-export function Topbar() {
+import { usePathname } from "next/navigation";
+import { Bell, Search } from "lucide-react";
+
+function titleFromPath(pathname: string): string {
+  if (pathname === "/") return "Dashboard";
+  if (pathname.startsWith("/transactions/new")) return "Nuevo movimiento";
+  if (pathname.startsWith("/transactions")) return "Transacciones";
+  if (pathname.startsWith("/budgets")) return "Presupuestos";
+  if (pathname.startsWith("/expenses")) return "Top gastos";
+  if (pathname.startsWith("/year")) return "Año";
+  if (pathname.startsWith("/export")) return "Exportar";
+  return "Nido";
+}
+
+export default function Topbar() {
+  const pathname = usePathname();
+  const title = titleFromPath(pathname);
+
   return (
-    <header className="rounded-3xl border border-[rgb(var(--border))] bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="hidden md:block">
-            <div className="text-sm font-semibold">Panel</div>
-            <div className="text-xs text-[rgb(var(--subtext))]">Diseño moderno · Nido</div>
-          </div>
+    <header className="flex flex-col gap-3 rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)] md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0">
+        <div className="truncate text-base font-semibold tracking-tight">{title}</div>
+        <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
+          Nido — Donde el dinero encuentra orden
+        </div>
+      </div>
 
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              placeholder="Buscar (más adelante)"
-              className="w-full rounded-2xl border border-[rgb(var(--border))] bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[rgba(var(--brand),0.45)] focus:ring-2 focus:ring-[rgba(var(--brand),0.18)]"
-            />
-          </div>
+      <div className="flex items-center gap-2">
+        <div className="hidden items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 md:flex">
+          <Search size={16} className="text-[rgb(var(--subtext))]" />
+          <input
+            placeholder="Buscar (próximamente)"
+            className="w-56 bg-transparent text-sm outline-none"
+            disabled
+          />
         </div>
 
-        <div className="rounded-2xl bg-linear-to-r from-[rgb(var(--brand))] to-[rgb(var(--brand-2))] px-4 py-2 text-sm font-semibold text-white">
-          + Transacción (próximo)
-        </div>
+        <button
+          type="button"
+          className="grid h-10 w-10 place-items-center rounded-2xl border border-[rgb(var(--border))] bg-white hover:bg-[rgb(var(--muted))]"
+          title="Notificaciones (próximamente)"
+        >
+          <Bell size={18} />
+        </button>
       </div>
     </header>
   );
 }
+
 

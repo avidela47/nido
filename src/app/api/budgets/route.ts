@@ -1,22 +1,30 @@
 import { NextResponse } from "next/server";
-import { currentMonthYYYYMM, getMonthlyBudgets, upsertBudget } from "../../../lib/budgets";
+import { ObjectId } from "mongodb";
+import { getDb } from "../../../lib/mongodb";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return "Error desconocido";
 }
 
-export async function GET(req: Request) {
-  try {
-    const url = new URL(req.url);
-    const month = url.searchParams.get("month") ?? currentMonthYYYYMM();
-
-    const data = await getMonthlyBudgets(month);
-    return NextResponse.json({ ok: true, data });
-  } catch (err: unknown) {
-    return NextResponse.json({ ok: false, error: getErrorMessage(err) }, { status: 400 });
-  }
+function isMonthYYYYMM(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}$/.test(v);
 }
+
+function toNumber(v: unknown): number {
+  if (typeof v === "number") return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+type BudgetDoc = {
+  _id: ObjectId;
+  month: string;
+  categoryId: ObjectId;
+  amount: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
 export async function POST(req: Request) {
   try {
@@ -27,21 +35,56 @@ export async function POST(req: Request) {
 
     const b = body as { month?: unknown; categoryId?: unknown; amount?: unknown };
 
-    if (typeof b.month !== "string") {
-      return NextResponse.json({ ok: false, error: "month inválido" }, { status: 400 });
+    if (!isMonthYYYYMM(b.month)) {
+      return NextResponse.json({ ok: false, error: "month inválido (YYYY-MM)" }, { status: 400 });
     }
-    if (typeof b.categoryId !== "string") {
+    if (typeof b.categoryId !== "string" || !ObjectId.isValid(b.categoryId)) {
       return NextResponse.json({ ok: false, error: "categoryId inválido" }, { status: 400 });
     }
 
-    const amount = typeof b.amount === "number" ? b.amount : Number(b.amount);
+    const amount = toNumber(b.amount);
     if (!Number.isFinite(amount) || amount < 0) {
       return NextResponse.json({ ok: false, error: "amount inválido" }, { status: 400 });
     }
 
-    await upsertBudget({ month: b.month, categoryId: b.categoryId, amount });
-    return NextResponse.json({ ok: true });
+    const db = await getDb();
+
+    // Si amount === 0 => borrar presupuesto (comportamiento práctico de CRUD)
+    if (amount === 0) {
+      await db.collection("budgets").deleteOne({
+        month: b.month,
+        categoryId: new ObjectId(b.categoryId),
+      });
+
+      return NextResponse.json({ ok: true, data: { deleted: true } });
+    }
+
+    // Upsert por (month, categoryId)
+    const res = await db.collection("budgets").findOneAndUpdate(
+      { month: b.month, categoryId: new ObjectId(b.categoryId) },
+      {
+        $set: { amount, updatedAt: new Date() },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true, returnDocument: "after" }
+    );
+
+    const doc = res.value as BudgetDoc | null;
+    if (!doc) {
+      return NextResponse.json({ ok: false, error: "No se pudo guardar" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        _id: doc._id.toString(),
+        month: doc.month,
+        categoryId: doc.categoryId.toString(),
+        amount: doc.amount,
+      },
+    });
   } catch (err: unknown) {
     return NextResponse.json({ ok: false, error: getErrorMessage(err) }, { status: 400 });
   }
 }
+

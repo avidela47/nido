@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppShell } from "../components/layout/AppShell";
+import AppShell from "../components/layout/AppShell";
+import { ToastProvider } from "../components/ui/Toast";
 
 export const metadata: Metadata = {
   title: "Nido — Donde el dinero encuentra orden",
-  description: "Finanzas del hogar con imputación por persona.",
+  description: "Finanzas del hogar con imputación simple por persona.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="es">
       <body>
-        <AppShell>{children}</AppShell>
+        <ToastProvider>
+          <AppShell>{children}</AppShell>
+        </ToastProvider>
       </body>
     </html>
   );
 }
+
+

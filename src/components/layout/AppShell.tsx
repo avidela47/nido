@@ -1,7 +1,7 @@
-import { Sidebar } from "./Sidebar";
-import { Topbar } from "./Topbar";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <div className="mx-auto flex max-w-7xl gap-4 p-4">
@@ -16,5 +16,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 
 
