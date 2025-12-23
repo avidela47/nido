@@ -35,6 +35,17 @@ function toNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
+
+function getObj(v: unknown, key: string): Record<string, unknown> | null {
+  const obj = asRecord(v);
+  const out = obj[key];
+  if (out && typeof out === "object") return out as Record<string, unknown>;
+  return null;
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -102,18 +113,22 @@ export async function GET(req: Request) {
       ])
       .toArray();
 
-    const items: ExpenseItem[] = rows.map((r: any) => {
-      const id = String(r._id);
+    const items: ExpenseItem[] = rows.map((row: unknown) => {
+      const r = asRecord(row);
+      const id = String(r._id ?? "");
       const amount = toNumber(r.amount);
-      const d = r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date ?? "");
+      const dateVal = r.date;
+      const d = dateVal instanceof Date ? dateVal.toISOString().slice(0, 10) : String(dateVal ?? "");
       const note = typeof r.note === "string" ? r.note : "";
 
-      const p = r.person && r.person._id
-        ? { _id: String(r.person._id), name: String(r.person.name ?? "—") }
+      const personObj = getObj(r, "person");
+      const p = personObj && personObj._id
+        ? { _id: String(personObj._id), name: String(personObj.name ?? "—") }
         : null;
 
-      const c = r.category && r.category._id
-        ? { _id: String(r.category._id), name: String(r.category.name ?? "—") }
+      const categoryObj = getObj(r, "category");
+      const c = categoryObj && categoryObj._id
+        ? { _id: String(categoryObj._id), name: String(categoryObj.name ?? "—") }
         : null;
 
       return { _id: id, amount, date: d, note, person: p, category: c };

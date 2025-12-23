@@ -6,11 +6,6 @@ function getErrorMessage(err: unknown): string {
   return "Error desconocido";
 }
 
-function isoDate(d: unknown): string | null {
-  if (d instanceof Date) return d.toISOString();
-  return null;
-}
-
 function serializeDoc(doc: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(doc)) {

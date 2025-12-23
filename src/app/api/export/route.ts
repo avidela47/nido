@@ -8,6 +8,10 @@ function getErrorMessage(err: unknown): string {
   return "Error desconocido";
 }
 
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
+
 function isMonthYYYYMM(v: unknown): v is string {
   return typeof v === "string" && /^\d{4}-\d{2}$/.test(v);
 }
@@ -113,15 +117,25 @@ export async function GET(req: Request) {
       ])
       .toArray();
 
-    const out = rows.map((r: any) => ({
-      id: r._id?.toString?.() ?? "",
-      date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date ?? ""),
-      type: String(r.type ?? ""),
-      amount: Number(r.amount ?? 0),
-      person: String(r.personName ?? ""),
-      category: String(r.categoryName ?? ""),
-      note: String(r.note ?? ""),
-    }));
+    const out = rows.map((row: unknown) => {
+      const r = asRecord(row);
+      const idVal = r._id;
+      const id =
+        idVal && typeof idVal === "object" && "toString" in idVal && typeof (idVal as { toString: unknown }).toString === "function"
+          ? (idVal as { toString: () => string }).toString()
+          : String(idVal ?? "");
+      const dateVal = r.date;
+      const date = dateVal instanceof Date ? dateVal.toISOString().slice(0, 10) : String(dateVal ?? "");
+      return {
+        id,
+        date,
+        type: String(r.type ?? ""),
+        amount: Number(r.amount ?? 0),
+        person: String(r.personName ?? ""),
+        category: String(r.categoryName ?? ""),
+        note: String(r.note ?? ""),
+      };
+    });
 
     const headers = ["id", "date", "type", "amount", "person", "category", "note"];
     const csv = toCSV(out, headers);
