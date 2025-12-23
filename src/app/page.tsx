@@ -4,6 +4,7 @@ import { formatCurrencyARS } from "../lib/format";
 import { getMonthlySummary } from "../lib/summary";
 import { getMonthlyBudgets } from "../lib/budgets";
 import { getMonthlyPersonBudgets } from "../lib/personBudgets";
+import { Suspense } from "react";
 
 function currentMonthYYYYMM(): string {
   const d = new Date();
@@ -15,9 +16,10 @@ function currentMonthYYYYMM(): string {
 export default async function Page({
   searchParams,
 }: {
-  searchParams?: { month?: string };
+  searchParams?: Promise<{ month?: string }>;
 }) {
-  const month = searchParams?.month ?? currentMonthYYYYMM();
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? currentMonthYYYYMM();
   const summary = await getMonthlySummary(month);
 
   const budgets = await getMonthlyBudgets(month);
@@ -38,12 +40,12 @@ export default async function Page({
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-sm text-[rgb(var(--subtext))]">
-            Nido — Donde el dinero encuentra orden · {month}
-          </p>
+          <p className="mt-1 text-sm text-[rgb(var(--subtext))]">Resumen del mes · {month}</p>
         </div>
 
-        <DashboardMonthPicker />
+        <Suspense>
+          <DashboardMonthPicker />
+        </Suspense>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -66,7 +68,7 @@ export default async function Page({
         />
       </div>
 
-      <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+  <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="mb-3">
           <div className="text-sm font-semibold">Totales por persona</div>
           <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
@@ -78,7 +80,7 @@ export default async function Page({
           {summary.byPerson.map((p) => (
             <div
               key={p.personId}
-              className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 hover:bg-[rgb(var(--muted))] transition"
+              className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 hover:bg-[rgb(var(--muted))] transition"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -100,13 +102,13 @@ export default async function Page({
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2">
+                <div className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2">
                   <div className="text-[rgb(var(--subtext))]">Ingresos</div>
                   <div className="mt-1 text-sm font-semibold text-emerald-600 tabular-nums">
                     {formatCurrencyARS(p.income)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2">
+                <div className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2">
                   <div className="text-[rgb(var(--subtext))]">Gastos</div>
                   <div className="mt-1 text-sm font-semibold tabular-nums">
                     {formatCurrencyARS(-Math.abs(p.expense))}
@@ -124,7 +126,7 @@ export default async function Page({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+  <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
             <div className="text-sm font-semibold">Alertas de presupuesto por categoría</div>
@@ -146,7 +148,7 @@ export default async function Page({
         )}
       </div>
 
-      <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+  <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-start gap-2">
             <div className="grid h-9 w-9 place-items-center rounded-2xl bg-[rgba(var(--brand),0.10)] text-[rgb(var(--brand-dark))]">
@@ -188,7 +190,7 @@ function KpiCard({
   positive?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+    <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-semibold">{title}</div>
         <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[rgba(var(--brand),0.10)] text-[rgb(var(--brand-dark))]">
@@ -224,7 +226,7 @@ function AlertBoxCategory({
           {rows.map((r) => (
             <div
               key={r.categoryName}
-              className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white px-3 py-2"
+              className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold">{r.categoryName}</div>
@@ -264,7 +266,7 @@ function AlertBoxPerson({
           {rows.map((r) => (
             <div
               key={r.personName}
-              className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white px-3 py-2"
+              className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold">{r.personName}</div>

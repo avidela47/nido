@@ -3,6 +3,7 @@ import BudgetsClient from "./BudgetsClient";
 import { getDb } from "../../lib/mongodb";
 import { currentMonthYYYYMM } from "../../lib/budgets";
 import { ObjectId } from "mongodb";
+import { Suspense } from "react";
 
 type CategoryRow = { _id: string; name: string };
 type BudgetRow = { _id: string; categoryId: string; amount: number };
@@ -26,9 +27,10 @@ function parseMonth(month: string): { start: Date; end: Date } {
 export default async function BudgetsPage({
   searchParams,
 }: {
-  searchParams?: { month?: string };
+  searchParams?: Promise<{ month?: string }>;
 }) {
-  const month = searchParams?.month ?? currentMonthYYYYMM();
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? currentMonthYYYYMM();
   const { start, end } = parseMonth(month);
 
   const db = await getDb();
@@ -88,7 +90,9 @@ export default async function BudgetsPage({
       title="Presupuestos"
       subtitle="Definí presupuesto por categoría y mes. Semáforo automático según consumo."
     >
-      <BudgetsClient month={month} categories={categories} budgets={budgets} spentByCategory={spentByCategory} />
+      <Suspense>
+        <BudgetsClient month={month} categories={categories} budgets={budgets} spentByCategory={spentByCategory} />
+      </Suspense>
     </SectionCard>
   );
 }

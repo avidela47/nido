@@ -20,6 +20,12 @@ type Row = {
   spent: number;
 };
 
+function didChangeBudget(original: number, draftText: string | undefined): boolean {
+  const parsed = parseMoneyInput(draftText ?? "");
+  if (parsed === null) return false;
+  return parsed !== (Number(original) || 0);
+}
+
 function toMoneyInput(v: number): string {
   if (!Number.isFinite(v) || v <= 0) return "";
   return String(Math.round(v));
@@ -76,14 +82,19 @@ export default function BudgetsClient({
   const [errorByCat, setErrorByCat] = useState<Record<string, string>>({});
 
   const totals = useMemo(() => {
+    // Totales “vivos”: si el usuario está editando, reflejar drafts para que entienda el impacto.
     let budgetTotal = 0;
     let spentTotal = 0;
+    let pendingChanges = 0;
     for (const r of initialRows) {
-      budgetTotal += r.budget;
+      const parsed = parseMoneyInput(drafts[r.categoryId] ?? "");
+      const nextBudget = parsed === null ? r.budget : parsed;
+      budgetTotal += nextBudget;
       spentTotal += r.spent;
+      if (didChangeBudget(r.budget, drafts[r.categoryId])) pendingChanges += 1;
     }
-    return { budgetTotal, spentTotal, balance: budgetTotal - spentTotal };
-  }, [initialRows]);
+    return { budgetTotal, spentTotal, balance: budgetTotal - spentTotal, pendingChanges };
+  }, [initialRows, drafts]);
 
   function setMonth(next: string) {
     const sp = new URLSearchParams(params.toString());
@@ -99,6 +110,14 @@ export default function BudgetsClient({
     if (amount === null) {
       setErrorByCat((p) => ({ ...p, [categoryId]: "Monto inválido." }));
       return;
+    }
+
+    // Confirmación simple para borrado, así no desaparece “sin querer”.
+    if (amount === 0) {
+      const ok = window.confirm(
+        "Esto va a borrar el presupuesto de esta categoría para este mes (quedará en 0). ¿Confirmás?"
+      );
+      if (!ok) return;
     }
 
     setSavingByCat((p) => ({ ...p, [categoryId]: true }));
@@ -150,6 +169,12 @@ export default function BudgetsClient({
             <div className="font-semibold tabular-nums">{formatCurrencyARS(totals.balance)}</div>
           </div>
         </div>
+
+        {totals.pendingChanges > 0 ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+            Tenés {totals.pendingChanges} cambio(s) sin guardar. Guardá por fila.
+          </div>
+        ) : null}
       </div>
 
       {/* Rows */}
@@ -173,6 +198,10 @@ export default function BudgetsClient({
               const saving = !!savingByCat[r.categoryId];
               const err = errorByCat[r.categoryId] ?? "";
 
+              const changed = didChangeBudget(r.budget, drafts[r.categoryId]);
+              const isZeroNow = (parseMoneyInput(drafts[r.categoryId] ?? "") ?? r.budget) === 0;
+              const showCTA = r.budget <= 0 && !changed;
+
               return (
                 <div key={r.categoryId} className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -185,6 +214,12 @@ export default function BudgetsClient({
                         Gastado:{" "}
                         <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(r.spent))}</span>
                       </div>
+
+                      {showCTA ? (
+                        <div className="mt-2 text-xs font-semibold text-[rgb(var(--subtext))]">
+                          Tip: poné un monto para activar el semáforo de esta categoría.
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex flex-col gap-2 md:items-end">
@@ -209,12 +244,18 @@ export default function BudgetsClient({
                           title="Guardar presupuesto"
                         >
                           <Save size={16} />
-                          {saving ? "Guardando…" : "Guardar"}
+                          {saving ? "Guardando…" : changed ? "Guardar cambios" : "Guardar"}
                         </button>
                       </div>
 
+                      {isZeroNow && changed ? (
+                        <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 md:w-90">
+                          Este valor va a borrar el presupuesto al guardar.
+                        </div>
+                      ) : null}
+
                       {err ? (
-                        <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 md:w-[360px]">
+                        <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 md:w-90">
                           {err}
                         </div>
                       ) : null}

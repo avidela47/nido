@@ -9,9 +9,9 @@ function getErrorMessage(err: unknown): string {
 
 type TxType = "income" | "expense";
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const id = ctx.params.id;
+    const { id } = await ctx.params;
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
@@ -113,9 +113,9 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const id = ctx.params.id;
+    const { id } = await ctx.params;
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }

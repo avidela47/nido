@@ -2,13 +2,15 @@ import { SectionCard } from "../../components/ui/SectionCard";
 import PersonBudgetsClient from "./PersonBudgetsClient";
 import { currentMonthYYYYMM } from "../../lib/budgets";
 import { getMonthlyPersonBudgets } from "../../lib/personBudgets";
+import { Suspense } from "react";
 
 export default async function PersonBudgetsPage({
   searchParams,
 }: {
-  searchParams?: { month?: string };
+  searchParams?: Promise<{ month?: string }>;
 }) {
-  const month = searchParams?.month ?? currentMonthYYYYMM();
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? currentMonthYYYYMM();
   const data = await getMonthlyPersonBudgets(month);
 
   return (
@@ -16,7 +18,9 @@ export default async function PersonBudgetsPage({
       title="Presupuesto por persona"
       subtitle="Definí un tope mensual de gastos para cada persona y controlá el avance."
     >
-      <PersonBudgetsClient initial={data} />
+      <Suspense>
+        <PersonBudgetsClient initial={data} />
+      </Suspense>
     </SectionCard>
   );
 }

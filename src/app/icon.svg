@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Dejamos este archivo vacío (1x1) para que Next no genere/inyecte un icono alternativo
+	y así la única fuente de favicon sea `public/favicon.ico` referenciada en `src/app/layout.tsx`.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1" />

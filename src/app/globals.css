@@ -19,6 +19,18 @@ body {
   --brand-dark: 13 148 136;
 }
 
+/* Modo oscuro: ThemeProvider aplica la clase `dark` en el elemento <html> */
+.dark {
+  --bg: 11 18 32;
+  --card: 15 23 42;
+  --muted: 30 41 59;
+  --border: 51 65 85;
+  --text: 226 232 240;
+  --subtext: 148 163 184;
+
+  /* Dejamos brand igual para mantener identidad */
+}
+
 body {
   color: rgb(var(--text));
   background:

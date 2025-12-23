@@ -3,6 +3,7 @@ import PeopleSummaryClient from "./PeopleSummaryClient";
 import { getDb } from "../../lib/mongodb";
 import { currentMonthYYYYMM } from "../../lib/budgets";
 import { ObjectId } from "mongodb";
+import { Suspense } from "react";
 
 type PersonRow = { _id: string; name: string };
 
@@ -29,9 +30,10 @@ type AggRow = {
 export default async function PeopleSummaryPage({
   searchParams,
 }: {
-  searchParams?: { month?: string };
+  searchParams?: Promise<{ month?: string }>;
 }) {
-  const month = searchParams?.month ?? currentMonthYYYYMM();
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? currentMonthYYYYMM();
   const { start, end } = parseMonth(month);
 
   const db = await getDb();
@@ -82,7 +84,9 @@ export default async function PeopleSummaryPage({
       title="Resumen por persona"
       subtitle="Ingresos, gastos y balance mensual por cada integrante."
     >
-      <PeopleSummaryClient month={month} rows={rows} />
+      <Suspense>
+        <PeopleSummaryClient month={month} rows={rows} />
+      </Suspense>
     </SectionCard>
   );
 }

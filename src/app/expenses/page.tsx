@@ -2,16 +2,18 @@ import { SectionCard } from "../../components/ui/SectionCard";
 import ExpensesClient from "./ExpensesClient";
 import { getDb } from "../../lib/mongodb";
 import { currentMonthYYYYMM } from "../../lib/budgets";
+import { Suspense } from "react";
 
 type Person = { _id: string; name: string };
-type Category = { _id: string; name: string; type: "income" | "expense" };
+type Category = { _id: string; name: string; type: "expense" };
 
 export default async function ExpensesPage({
   searchParams,
 }: {
-  searchParams?: { month?: string };
+  searchParams?: Promise<{ month?: string }>;
 }) {
-  const month = searchParams?.month ?? currentMonthYYYYMM();
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? currentMonthYYYYMM();
   const db = await getDb();
 
   const peopleRaw = await db.collection("people").find({ active: true }).sort({ createdAt: 1 }).toArray();
@@ -29,7 +31,9 @@ export default async function ExpensesPage({
       title="Top gastos"
       subtitle="Filtrá y encontrá rápidamente los gastos más grandes del mes."
     >
-      <ExpensesClient month={month} people={people} categories={categories} />
+      <Suspense>
+        <ExpensesClient month={month} people={people} categories={categories} />
+      </Suspense>
     </SectionCard>
   );
 }

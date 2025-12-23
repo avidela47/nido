@@ -6,6 +6,8 @@ First, run the development server:
 
 ```bash
 npm run dev
+# o (forzar Webpack en dev)
+npm run dev:webpack
 # or
 yarn dev
 # or
@@ -13,6 +15,11 @@ pnpm dev
 # or
 bun dev
 ```
+
+### Notas (Windows)
+
+- Si ves `Unable to acquire lock at ...\.next\dev\lock`, es porque quedó otro `next dev` corriendo. Cerralo y borrá la carpeta `.next`.
+- Si tienes el puerto ocupado (`Port 3000 is in use...`), cerrá el proceso anterior y reiniciá el server.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 

@@ -1,5 +1,5 @@
 /* Simple SW for basic offline caching */
-const CACHE = "nido-cache-v1";
+const CACHE = "nido-cache-v2";
 const CORE = ["/", "/reports", "/reports/advanced", "/export"];
 
 self.addEventListener("install", (event) => {

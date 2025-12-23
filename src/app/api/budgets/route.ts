@@ -69,10 +69,11 @@ export async function POST(req: Request) {
       { upsert: true, returnDocument: "after" }
     );
 
-    const doc = res.value as BudgetDoc | null;
-    if (!doc) {
+    if (!res || !res.value) {
       return NextResponse.json({ ok: false, error: "No se pudo guardar" }, { status: 500 });
     }
+
+    const doc = res.value as BudgetDoc;
 
     return NextResponse.json({
       ok: true,

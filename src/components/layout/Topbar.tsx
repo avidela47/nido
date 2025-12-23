@@ -1,52 +1,106 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Search, Moon, Sun, ArrowRight } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "../theme/ThemeProvider";
 
-function titleFromPath(pathname: string): string {
-  if (pathname === "/") return "Dashboard";
-  if (pathname.startsWith("/transactions/new")) return "Nuevo movimiento";
-  if (pathname.startsWith("/transactions")) return "Transacciones";
-  if (pathname.startsWith("/budgets")) return "Presupuestos";
-  if (pathname.startsWith("/expenses")) return "Top gastos";
-  if (pathname.startsWith("/year")) return "Año";
-  if (pathname.startsWith("/export")) return "Exportar";
-  return "Nido";
-}
-
-export default function Topbar() {
+export function Topbar() {
+  const { isDark, toggle } = useTheme();
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const router = useRouter();
   const pathname = usePathname();
-  const title = titleFromPath(pathname);
+
+  const placeholder = useMemo(() => {
+    if (pathname.startsWith("/people")) return "Buscar persona…";
+    if (pathname.startsWith("/transactions")) return "Buscar movimiento…";
+    if (pathname.startsWith("/expenses")) return "Buscar gasto…";
+    return "Buscar…";
+  }, [pathname]);
+
+  function submit() {
+    const term = q.trim();
+    setOpen(false);
+    if (!term) return;
+
+    // Búsqueda útil basada en pantallas existentes:
+    // - /transactions soporta ?q
+    // - /expenses soporta ?q
+    // - /people no tiene filtro por query hoy, así que redirigimos a /transactions.
+    if (pathname.startsWith("/expenses")) {
+      router.push(`/expenses?q=${encodeURIComponent(term)}`);
+      return;
+    }
+
+    if (pathname.startsWith("/transactions")) {
+      router.push(`/transactions?q=${encodeURIComponent(term)}`);
+      return;
+    }
+
+    // default
+    router.push(`/transactions?q=${encodeURIComponent(term)}`);
+  }
 
   return (
-    <header className="flex flex-col gap-3 rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)] md:flex-row md:items-center md:justify-between">
-      <div className="min-w-0">
-        <div className="truncate text-base font-semibold tracking-tight">{title}</div>
-        <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-          Nido — Donde el dinero encuentra orden
-        </div>
-      </div>
+    <header className="min-w-0 rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center justify-center rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2 hover:bg-[rgb(var(--muted))]"
+            title="Buscar"
+            aria-label="Buscar"
+          >
+            <Search size={18} />
+          </button>
 
-      <div className="flex items-center gap-2">
-        <div className="hidden items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 md:flex">
-          <Search size={16} className="text-[rgb(var(--subtext))]" />
-          <input
-            placeholder="Buscar (próximamente)"
-            className="w-56 bg-transparent text-sm outline-none"
-            disabled
-          />
+          {open ? (
+            <div className="flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submit();
+                  if (e.key === "Escape") setOpen(false);
+                }}
+                placeholder={placeholder}
+                className="w-56 bg-transparent text-sm outline-none"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={submit}
+                className="inline-flex items-center justify-center rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] p-2"
+                title="Buscar"
+                aria-label="Buscar"
+              >
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <button
-          type="button"
-          className="grid h-10 w-10 place-items-center rounded-2xl border border-[rgb(var(--border))] bg-white hover:bg-[rgb(var(--muted))]"
-          title="Notificaciones (próximamente)"
-        >
-          <Bell size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Theme toggle (ACA PROBÁS) */}
+          <button
+            type="button"
+            onClick={toggle}
+            className="inline-flex items-center justify-center rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] p-2"
+            title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+            aria-label="Cambiar tema"
+          >
+            {isDark ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+        </div>
       </div>
     </header>
   );
 }
+
+export default Topbar;
+
+
 
 

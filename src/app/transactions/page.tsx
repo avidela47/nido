@@ -19,14 +19,24 @@ async function getTransactions(month: string): Promise<TxItem[]> {
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams?: { month?: string };
+  searchParams?: Promise<{ month?: string; q?: string }>;
 }) {
-  const month = searchParams?.month ?? currentMonthYYYYMM();
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? currentMonthYYYYMM();
+  const q = (sp.q ?? "").trim().toLowerCase();
   const items = await getTransactions(month);
+
+  const filtered =
+    q.length === 0
+      ? items
+      : items.filter((t) => {
+          const hay = `${t.note} ${t.person.name} ${t.category.name}`.toLowerCase();
+          return hay.includes(q);
+        });
 
   return (
     <SectionCard title="Movimientos" subtitle="Listado por mes. Editar o borrar (soft delete).">
-      <TransactionsClient month={month} items={items} />
+      <TransactionsClient month={month} items={filtered} />
     </SectionCard>
   );
 }
