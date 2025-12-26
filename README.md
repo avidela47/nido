@@ -1,3 +1,72 @@
+# Guía de uso detallada
+
+## 1. Cuentas
+
+- Accede a **Cuentas** desde el menú lateral.
+- Crea cuentas de tipo efectivo, banco, billetera virtual o tarjeta de crédito.
+- Cada cuenta debe estar asociada a una persona (obligatorio).
+- Puedes editar o eliminar cuentas desde el listado.
+
+## 2. Personas
+
+- Ve a **Personas** para gestionar los titulares o participantes.
+- Asocia movimientos y cuentas a cada persona para reportes personalizados.
+
+## 3. Movimientos (Ingresos/Egresos)
+
+- En **Movimientos** puedes registrar ingresos y gastos.
+- Selecciona el mes a visualizar.
+- Filtra por cuenta, tipo, texto, categoría o persona.
+- Usa el botón **Nuevo movimiento** para agregar uno nuevo.
+- Edita o elimina movimientos desde el listado.
+- Los movimientos pueden tener nota, categoría y persona asociada.
+
+## 4. Transferencias
+
+- Desde **Transferencias** puedes mover dinero entre cuentas.
+- Elige cuenta origen, destino, fecha y monto.
+- Las transferencias no afectan reportes ni presupuestos.
+- Se visualizan como un solo ítem en Movimientos.
+
+## 5. Presupuestos
+
+- En **Presupuestos** define límites mensuales por categoría y persona.
+- Visualiza el avance y alertas de sobrepaso.
+
+## 6. Categorías
+
+- Gestiona categorías de gasto/ingreso desde **Categorías**.
+- Asigna categorías a movimientos para mejores reportes.
+
+## 7. Reportes
+
+- Accede a **Reportes** para ver resúmenes por mes, año, persona y categoría.
+- Usa los filtros avanzados para comparar períodos y analizar tendencias.
+
+## 8. Resumen por persona
+
+- En **Personas**, haz click en una persona para ver su resumen.
+- El modal muestra:
+	- Totales históricos y del mes
+	- Top categorías
+	- Último movimiento
+	- Movimientos de todas sus cuentas (con filtros, búsqueda, exportar CSV y paginación)
+
+## 9. Backup y exportación
+
+- Desde **Exportar/Backup** puedes descargar todos los datos en CSV o hacer un backup completo.
+- También puedes restaurar datos desde un backup previo.
+
+## 10. Consejos de uso
+
+- Usa el selector de mes para navegar rápidamente entre períodos.
+- Aprovecha la búsqueda y filtros para encontrar movimientos específicos.
+- Exporta tus movimientos a CSV para análisis externo.
+- Revisa los reportes y resúmenes para tomar mejores decisiones financieras.
+
+---
+
+¿Dudas o sugerencias? Edita este README o revisa el código fuente para más detalles.
 # Nido
 
 App de finanzas personales **single-user** (Next.js App Router + TypeScript + Tailwind + MongoDB) con foco “PRO” en:

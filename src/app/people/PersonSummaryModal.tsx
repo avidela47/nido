@@ -7,8 +7,11 @@ type Tx = {
   date: string;
   note?: string;
   accountId?: string;
+  accountName?: string;
   categoryId?: string;
+  categoryName?: string;
 };
+
 
 import { useEffect, useMemo, useState } from "react";
 import { X, ArrowDownCircle, ArrowUpCircle, CalendarDays, WalletCards } from "lucide-react";
@@ -80,6 +83,61 @@ export default function PersonSummaryModal({
   const [movs, setMovs] = useState<Tx[] | null>(null);
   const [movsLoading, setMovsLoading] = useState(false);
   const [movsError, setMovsError] = useState("");
+
+    // --- Filtros, búsqueda, paginación y exportación de movimientos ---
+    // (debe estar justo antes del return y usarse en el render)
+    const [movType, setMovType] = useState<'all' | 'income' | 'expense'>('all');
+    const [movSearch, setMovSearch] = useState('');
+    const [movPage, setMovPage] = useState(1);
+    const pageSize = 30;
+
+    const filteredMovs = useMemo(() => {
+      if (!movs) return [];
+      let res: Tx[] = movs;
+      if (movType !== 'all') res = res.filter((tx: Tx) => tx.type === movType);
+      if (movSearch.trim()) {
+        const q = movSearch.trim().toLowerCase();
+        res = res.filter((tx: Tx) =>
+          (tx.note?.toLowerCase().includes(q) ?? false) ||
+          (tx.accountName?.toLowerCase().includes(q) ?? false) ||
+          (tx.categoryName?.toLowerCase().includes(q) ?? false) ||
+          String(tx.amount).includes(q)
+        );
+      }
+      return res;
+    }, [movs, movType, movSearch]);
+
+    const pagedMovs = useMemo(() => {
+      const start = (movPage - 1) * pageSize;
+      return filteredMovs.slice(start, start + pageSize);
+    }, [filteredMovs, movPage]);
+
+    const totalPages = Math.ceil(filteredMovs.length / pageSize) || 1;
+
+    function exportMovsCSV() {
+      if (!filteredMovs.length) return;
+      const header = ['Fecha', 'Tipo', 'Monto', 'Cuenta', 'Categoría', 'Nota'];
+      const rows = filteredMovs.map((tx: Tx) => [
+        String(tx.date?.slice(0,10) ?? ''),
+        String(tx.type),
+        String(tx.amount),
+        tx.accountName ?? '',
+        tx.categoryName ?? '',
+        tx.note ?? ''
+      ]);
+      const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `movimientos_${title}_${month}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
 
   useEffect(() => {
     if (!open || !person?._id || tab !== 'movimientos') return;
@@ -243,26 +301,63 @@ export default function PersonSummaryModal({
 
           {tab === 'movimientos' && (
             <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold text-[rgb(var(--subtext))]">Movimientos de todas las cuentas de {title} ({monthLabel})</div>
+              <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Movimientos de todas las cuentas de {title} ({monthLabel})</div>
+                <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
+                  <select
+                    value={movType}
+                    onChange={e => {
+                      const val = e.target.value as 'all' | 'income' | 'expense';
+                      setMovType(val);
+                      setMovPage(1);
+                    }}
+                    className="rounded-xl border px-2 py-1 text-xs"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="income">Ingresos</option>
+                    <option value="expense">Egresos</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={movSearch}
+                    onChange={e => {
+                      setMovSearch(e.target.value);
+                      setMovPage(1);
+                    }}
+                    placeholder="Buscar..."
+                    className="rounded-xl border px-2 py-1 text-xs"
+                  />
+                  <button onClick={exportMovsCSV} className="rounded-xl border px-2 py-1 text-xs bg-[rgb(var(--brand))] text-white">Exportar CSV</button>
+                </div>
+              </div>
               {movsLoading ? (
                 <div className="text-sm text-[rgb(var(--subtext))]">Cargando movimientos…</div>
               ) : movsError ? (
                 <div className="text-sm text-red-700">{movsError}</div>
-              ) : movs && movs.length > 0 ? (
-                <div className="max-h-64 overflow-y-auto divide-y divide-[rgb(var(--border))] bg-white rounded-2xl border border-[rgb(var(--border))]">
-                  {movs.map((tx) => (
-                    <div key={tx._id} className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
-                      <div className="truncate">
-                        <span className={tx.type === 'income' ? 'text-green-700' : tx.type === 'expense' ? 'text-red-700' : 'text-blue-700'}>
-                          {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄'}
-                        </span>{' '}
-                        <span className="font-semibold">{tx.amount}</span>
-                        {tx.note ? <span className="text-[rgb(var(--subtext))]"> · {tx.note}</span> : null}
+              ) : filteredMovs.length > 0 ? (
+                <>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-[rgb(var(--border))] bg-white rounded-2xl border border-[rgb(var(--border))]">
+                    {pagedMovs.map((tx) => (
+                      <div key={tx._id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 px-3 py-2 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <span className={tx.type === 'income' ? 'text-green-700' : tx.type === 'expense' ? 'text-red-700' : 'text-blue-700'}>
+                            {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄'}
+                          </span>{' '}
+                          <span className="font-semibold">{tx.amount}</span>
+                          {tx.accountName ? <span className="ml-2 text-[rgb(var(--subtext))]">{tx.accountName}</span> : null}
+                          {tx.categoryName ? <span className="ml-2 text-[rgb(var(--subtext))]">{tx.categoryName}</span> : null}
+                          {tx.note ? <span className="ml-2 text-[rgb(var(--subtext))]">· {tx.note}</span> : null}
+                        </div>
+                        <div className="shrink-0 tabular-nums text-[rgb(var(--subtext))]">{tx.date?.slice(0,10)}</div>
                       </div>
-                      <div className="shrink-0 tabular-nums text-[rgb(var(--subtext))]">{tx.date?.slice(0,10)}</div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <button disabled={movPage <= 1} onClick={() => setMovPage(p => Math.max(1, p - 1))} className="rounded-xl border px-2 py-1 text-xs disabled:opacity-50">Anterior</button>
+                    <span className="text-xs">Página {movPage} de {totalPages}</span>
+                    <button disabled={movPage >= totalPages} onClick={() => setMovPage(p => Math.min(totalPages, p + 1))} className="rounded-xl border px-2 py-1 text-xs disabled:opacity-50">Siguiente</button>
+                  </div>
+                </>
               ) : (
                 <div className="text-sm text-[rgb(var(--subtext))]">Sin movimientos en el mes.</div>
               )}

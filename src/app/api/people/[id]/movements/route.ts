@@ -13,8 +13,19 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
     const db = await getDb();
     // Buscar cuentas de la persona
-  const accounts = await db.collection("accounts").find({ "person._id": personId, active: { $ne: false } }).toArray();
-  const accountIds = accounts.map((a: { _id: string | ObjectId }) => a._id);
+    type AccountDoc = { _id: ObjectId | string; name?: string };
+    type CategoryDoc = { _id: ObjectId | string; name?: string };
+    type TxDoc = {
+      _id: ObjectId | string;
+      type: string;
+      amount: number;
+      date: Date | string;
+      note?: string;
+      accountId?: ObjectId | string;
+      categoryId?: ObjectId | string;
+    };
+    const accounts = await db.collection("accounts").find({ "person._id": personId, active: { $ne: false } }).toArray() as AccountDoc[];
+    const accountIds = accounts.map((a) => a._id);
     // Filtro de mes
     let dateFilter = {};
     if (month) {
@@ -30,8 +41,26 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       deletedAt: { $exists: false },
       accountId: { $in: accountIds },
       ...dateFilter,
-    }).sort({ date: -1, createdAt: -1 }).toArray();
-    return NextResponse.json({ ok: true, items: txs });
+    }).sort({ date: -1, createdAt: -1 }).toArray() as TxDoc[];
+
+    // Enriquecer con nombre de cuenta y categoría
+    const categoryIds = Array.from(new Set(txs.map((t) => t.categoryId?.toString()).filter(Boolean)));
+    const categories = await db.collection("categories").find({ _id: { $in: categoryIds.map((id) => new ObjectId(id)) } }).toArray() as CategoryDoc[];
+    const catMap = new Map(categories.map((c) => [c._id.toString(), typeof c.name === "string" ? c.name : "—"]));
+    const accMap = new Map(accounts.map((a) => [a._id.toString(), typeof a.name === "string" ? a.name : "—"]));
+
+    const items = txs.map((t) => ({
+      _id: t._id.toString(),
+      type: t.type,
+      amount: t.amount,
+      date: t.date instanceof Date ? t.date.toISOString() : t.date,
+      note: t.note,
+      accountId: t.accountId?.toString(),
+      accountName: t.accountId ? accMap.get(t.accountId.toString()) : undefined,
+      categoryId: t.categoryId?.toString(),
+      categoryName: t.categoryId ? catMap.get(t.categoryId.toString()) : undefined,
+    }));
+    return NextResponse.json({ ok: true, items });
   } catch (err: unknown) {
     return NextResponse.json({ ok: false, error: (err as Error)?.message ?? "Error" }, { status: 500 });
   }
