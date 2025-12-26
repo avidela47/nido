@@ -21,7 +21,10 @@ export async function GET(req: Request) {
 
     const db = await getDb();
 
-    const baseMatch: Record<string, unknown> = { deletedAt: { $exists: false } };
+    const baseMatch: Record<string, unknown> = {
+      deletedAt: { $exists: false },
+      type: { $in: ["income", "expense"] },
+    };
     if (personId) {
       if (!ObjectId.isValid(personId)) {
         return NextResponse.json({ ok: false, error: "personId inválido" }, { status: 400 });

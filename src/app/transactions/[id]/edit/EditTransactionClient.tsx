@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type TxType = "income" | "expense";
 type Person = { _id: string; name: string };
 type Category = { _id: string; name: string; type: "income" | "expense" };
+type AccountRow = { _id: string; name: string; type: "cash" | "bank" | "wallet" | "credit" };
 
 type Tx = {
   _id: string;
@@ -13,6 +14,7 @@ type Tx = {
   amount: number;
   personId: string;
   categoryId: string;
+  accountId?: string;
   date: string; // YYYY-MM-DD
   note: string;
 };
@@ -42,10 +44,13 @@ export default function EditTransactionClient({
   const [amount, setAmount] = useState<string>(String(tx.amount));
   const [personId, setPersonId] = useState<string>(tx.personId);
   const [categoryId, setCategoryId] = useState<string>(tx.categoryId);
+  const [accountId, setAccountId] = useState<string>(tx.accountId ?? "");
   const [date, setDate] = useState<string>(tx.date);
   const [note, setNote] = useState<string>(tx.note);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
 
   const filteredCategories = useMemo(
     () => categories.filter((c) => c.type === type),
@@ -63,6 +68,28 @@ export default function EditTransactionClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, filteredCategories.length]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/accounts", { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as
+          | { ok: true; accounts: AccountRow[] }
+          | { ok: false; error?: string }
+          | null;
+        if (cancelled) return;
+        if (res.ok && json && (json as { ok?: unknown }).ok === true) {
+          setAccounts((json as { accounts: AccountRow[] }).accounts ?? []);
+        }
+      } catch {
+        // opcional
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function backUrl() {
     const fallbackMonth = monthFromDateYYYYMM(date) || monthFromDateYYYYMM(tx.date);
     const month = monthParam || fallbackMonth;
@@ -78,7 +105,15 @@ export default function EditTransactionClient({
     const res = await fetch(`/api/transactions/${tx._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, amount: num, personId, categoryId, date, note }),
+      body: JSON.stringify({
+        type,
+        amount: num,
+        personId,
+        categoryId,
+        accountId: accountId || null,
+        date,
+        note,
+      }),
     });
 
     const data = await res.json().catch(() => null);
@@ -161,6 +196,21 @@ export default function EditTransactionClient({
             {filteredCategories.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Cuenta (opcional)">
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
+          >
+            <option value="">Sin cuenta</option>
+            {accounts.map((a) => (
+              <option key={a._id} value={a._id}>
+                {a.name}{a.type === "credit" ? " (Tarjeta)" : ""}
               </option>
             ))}
           </select>

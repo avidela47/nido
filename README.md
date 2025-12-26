@@ -1,43 +1,211 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nido
 
-## Getting Started
+App de finanzas personales **single-user** (Next.js App Router + TypeScript + Tailwind + MongoDB) con foco “PRO” en:
 
-First, run the development server:
+- Cuentas (cash/bank/wallet/credit)
+- Movimientos mensuales (ingresos/gastos)
+- Transferencias entre cuentas (no afectan presupuestos/reportes)
+- Presupuestos, categorías, personas, reportes y export/backup
+
+> Nota: es una app pensada para **uso personal** (sin autenticación multi-usuario).
+
+## Requisitos
+
+- Node.js (recomendado: 20+)
+- MongoDB (local o remoto)
+
+## Configuración rápida (paso a paso)
+
+1) Instalá dependencias
+
+```bash
+npm install
+```
+
+2) Creá `.env.local`
+
+Este proyecto usa `mongodb` nativo. Necesitás como mínimo:
+
+```bash
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DB=nido
+```
+
+3) Levantá el server en desarrollo
 
 ```bash
 npm run dev
-# o (forzar Webpack en dev)
-npm run dev:webpack
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-### Notas (Windows)
+Opcional (Windows / dev estable):
 
-- Si ves `Unable to acquire lock at ...\.next\dev\lock`, es porque quedó otro `next dev` corriendo. Cerralo y borrá la carpeta `.next`.
-- Si tienes el puerto ocupado (`Port 3000 is in use...`), cerrá el proceso anterior y reiniciá el server.
+```bash
+npm run dev:clean
+```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4) Abrí la app
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Conceptos del modelo (para entender la app)
 
-## Learn More
+### Tipos de movimientos
 
-To learn more about Next.js, take a look at the following resources:
+- `income`: ingreso
+- `expense`: gasto
+- `transfer`: transferencia (se registra como 2 “patas”)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Cuentas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Las cuentas tienen un `type`:
 
-## Deploy on Vercel
+- `cash` (efectivo)
+- `bank` (banco)
+- `wallet` (billetera virtual)
+- `credit` (tarjeta de crédito)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Transferencias (muy importante)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Una transferencia se guarda como **dos transacciones** vinculadas por un `transferGroupId`:
+
+- pata `out`: sale plata de la cuenta origen
+- pata `in`: entra plata a la cuenta destino
+
+En UI:
+
+- En **Movimientos**, se muestra como **un solo ítem** “Origen → Destino”.
+- En **Transferencias**, podés ver/crear/eliminar transferencias.
+- En **Reportes/Presupuestos**, las transferencias se excluyen para no “inflar” ingresos/gastos.
+
+## Workflows (cómo se usa) 🧭
+
+### 1) Configurar cuentas
+
+1. Ir a **Cuentas** (`/accounts`)
+2. Crear al menos 1 cuenta (ej. “Efectivo”, “Banco”, “MP”, “Visa”)
+
+Consejo: si usás tarjeta, elegí tipo `credit`.
+
+### 2) Cargar movimientos (ingresos/gastos)
+
+1. Ir a **Movimientos** (`/transactions`)
+2. Elegir el **mes** (selector tipo `month`)
+3. (Opcional) Filtrar por **cuenta**
+4. Click en **Nuevo movimiento**
+5. Elegir:
+	 - tipo (ingreso/gasto)
+	 - cuenta (opcional)
+	 - categoría/persona (opcional)
+	 - monto
+	 - nota
+
+Editar y borrar:
+
+- Se edita desde el botón **Editar**.
+- “Borrar” es **soft delete** (se oculta, no se destruye físicamente).
+
+### 3) Crear una transferencia entre cuentas
+
+1. Ir a **Transferencias** (`/transfers`)
+2. Completar:
+	 - cuenta origen
+	 - cuenta destino
+	 - fecha
+	 - monto
+	 - (opcional) nota
+3. Click en **Crear transferencia**
+
+### 4) Ver transferencias dentro de Movimientos (como 1 fila)
+
+1. Ir a **Movimientos** (`/transactions`)
+2. Activar el checkbox **Mostrar transferencias**
+
+Las transferencias aparecen como:
+
+- Badge “Transferencia”
+- Título “Transferencia · Origen → Destino”
+- Monto (formato moneda)
+
+Importante:
+
+- Desde Movimientos **no** se permite Editar/Borrar una transferencia.
+
+### 5) Ver detalle de una transferencia (por grupo)
+
+Desde el ítem en Movimientos:
+
+- Click en el título de la transferencia o en **Ver detalle**
+- Te lleva a: `/transfers/[groupId]`
+
+En el detalle se muestran:
+
+- Origen → Destino
+- Fecha, monto, nota
+- Las 2 patas (Salida/Entrada) con el ID de transacción
+
+### 6) Categorías, presupuestos y reportes
+
+- **Categorías**: `/categories`
+- **Presupuestos**: `/budgets`
+- **Reportes**: `/reports`
+
+Regla clave: las transferencias **no** cuentan como gasto/ingreso en reportes/presupuestos.
+
+### 7) Backup / export
+
+En `/export` tenés herramientas de export/backups (según configuración del proyecto).
+
+## Endpoints (referencia rápida)
+
+- Movimientos
+	- `GET /api/transactions?month=YYYY-MM`
+	- `DELETE /api/transactions/:id`
+
+- Transferencias
+	- `GET /api/transfers?month=YYYY-MM`
+	- `POST /api/transfers`
+	- `PATCH /api/transfers/:groupId`
+	- `DELETE /api/transfers/:groupId`
+	- `GET /api/transfers/:groupId/details`
+
+## Scripts útiles
+
+```bash
+npm run dev
+npm run dev:webpack
+npm run dev:clean
+npm run build
+npm run start
+npm run lint
+```
+
+## Notas Windows / troubleshooting
+
+### Lock de Next (`.next/dev/lock`)
+
+Si ves:
+
+- `Unable to acquire lock at ...\.next\dev\lock`
+
+Es porque quedó otro `next dev` corriendo.
+
+Solución rápida:
+
+```bash
+npm run dev:clean
+```
+
+### Puerto 3000 ocupado
+
+Si sale:
+
+- `Port 3000 is in use...`
+
+Cerrá el proceso anterior (o cambiá el puerto).
+
+## Desarrollo
+
+- App Router (carpeta `src/app`)
+- API routes en `src/app/api/**/route.ts`
+- Acceso a MongoDB en `src/lib/mongodb.ts`
+

@@ -7,10 +7,11 @@ function getErrorMessage(err: unknown): string {
   return "Error desconocido";
 }
 
-type TxType = "income" | "expense";
+type TxType = "income" | "expense" | "transfer";
 
 type PersonDoc = { _id: ObjectId; name?: unknown; active?: unknown };
 type CategoryDoc = { _id: ObjectId; name?: unknown; type?: unknown };
+type AccountDoc = { _id: ObjectId; name?: unknown; type?: unknown; active?: unknown };
 
 type TxDoc = {
   _id: ObjectId;
@@ -18,6 +19,9 @@ type TxDoc = {
   amount?: unknown;
   personId?: unknown;
   categoryId?: unknown;
+  accountId?: unknown;
+  transferGroupId?: unknown;
+  transferSide?: unknown;
   date?: unknown;
   note?: unknown;
   createdAt?: unknown;
@@ -83,6 +87,14 @@ export async function GET(req: Request) {
       )
     );
 
+    const accountIds = Array.from(
+      new Set(
+        txRaw
+          .map((t) => (t.accountId instanceof ObjectId ? t.accountId.toString() : ""))
+          .filter(Boolean)
+      )
+    );
+
     const people = (await db
       .collection("people")
       .find({ _id: { $in: personIds.map((id) => new ObjectId(id)) } })
@@ -92,6 +104,11 @@ export async function GET(req: Request) {
       .collection("categories")
       .find({ _id: { $in: categoryIds.map((id) => new ObjectId(id)) } })
       .toArray()) as unknown as CategoryDoc[];
+
+    const accounts = (await db
+      .collection("accounts")
+      .find({ _id: { $in: accountIds.map((id) => new ObjectId(id)) } })
+      .toArray()) as unknown as AccountDoc[];
 
     const peopleMap = new Map(
       people.map((p) => [p._id.toString(), typeof p.name === "string" ? p.name : "—"])
@@ -107,15 +124,31 @@ export async function GET(req: Request) {
       ])
     );
 
+    const accountMap = new Map(
+      accounts.map((a) => [
+        a._id.toString(),
+        {
+          name: typeof a.name === "string" ? a.name : "—",
+          type: typeof a.type === "string" ? a.type : "cash",
+          active: a.active !== false,
+        },
+      ])
+    );
+
     const items = txRaw.map((t) => {
-      const type: TxType = t.type === "income" ? "income" : "expense";
+      const type: TxType = t.type === "income" ? "income" : t.type === "transfer" ? "transfer" : "expense";
       const amount = typeof t.amount === "number" ? t.amount : Number(t.amount);
 
       const personId = t.personId instanceof ObjectId ? t.personId.toString() : "";
       const categoryId = t.categoryId instanceof ObjectId ? t.categoryId.toString() : "";
+  const accountId = t.accountId instanceof ObjectId ? t.accountId.toString() : "";
 
       const personName = peopleMap.get(personId) ?? "—";
-      const cat = catMap.get(categoryId) ?? { name: "—", type };
+  const cat = catMap.get(categoryId) ?? { name: "—", type: type === "income" ? ("income" as const) : ("expense" as const) };
+  const acc = accountId ? accountMap.get(accountId) : null;
+
+  const transferGroupId = t.transferGroupId instanceof ObjectId ? t.transferGroupId.toString() : "";
+  const transferSide = t.transferSide === "in" ? ("in" as const) : t.transferSide === "out" ? ("out" as const) : null;
 
       const dateIso =
         t.date instanceof Date
@@ -132,6 +165,10 @@ export async function GET(req: Request) {
         note: typeof t.note === "string" ? t.note : "",
         person: { id: personId, name: personName },
         category: { id: categoryId, name: cat.name, type: cat.type },
+        account: accountId && acc ? { id: accountId, name: acc.name } : null,
+        transfer: type === "transfer" && transferGroupId
+          ? { groupId: transferGroupId, side: transferSide }
+          : null,
       };
     });
 
@@ -157,6 +194,7 @@ export async function POST(req: Request) {
       amount?: unknown;
       personId?: unknown;
       categoryId?: unknown;
+      accountId?: unknown;
       date?: unknown;
       note?: unknown;
     };
@@ -177,6 +215,16 @@ export async function POST(req: Request) {
 
     if (typeof b.categoryId !== "string" || !b.categoryId.trim()) {
       return NextResponse.json({ ok: false, error: "Categoría inválida" }, { status: 400 });
+    }
+
+    // Cuenta opcional (permitir "Sin cuenta")
+    if (b.accountId !== undefined && b.accountId !== null) {
+      if (typeof b.accountId !== "string") {
+        return NextResponse.json({ ok: false, error: "Cuenta inválida" }, { status: 400 });
+      }
+      if (b.accountId.trim() && !ObjectId.isValid(b.accountId)) {
+        return NextResponse.json({ ok: false, error: "Cuenta inválida" }, { status: 400 });
+      }
     }
 
     const isoDate =
@@ -214,7 +262,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await db.collection("transactions").insertOne({
+    let accountId: ObjectId | undefined;
+    if (typeof b.accountId === "string" && b.accountId.trim()) {
+      accountId = new ObjectId(b.accountId);
+      const account = await db
+        .collection("accounts")
+        .findOne({ _id: accountId, active: { $ne: false } });
+      if (!account) {
+        return NextResponse.json(
+          { ok: false, error: "La cuenta no existe" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const doc: Record<string, unknown> = {
       type,
       amount: numAmount,
       personId: new ObjectId(b.personId),
@@ -222,7 +284,11 @@ export async function POST(req: Request) {
       date: isoDate,
       note: safeNote,
       createdAt: new Date(),
-    });
+    };
+
+    if (accountId) doc.accountId = accountId;
+
+    const result = await db.collection("transactions").insertOne(doc);
 
     return NextResponse.json({ ok: true, id: result.insertedId.toString() });
   } catch (err: unknown) {

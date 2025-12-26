@@ -7,12 +7,14 @@ import {
   Home,
   Users,
   Wallet,
+  ArrowRightLeft,
   PiggyBank,
   Tags,
   BarChart3,
   FileDown,
   CalendarDays,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
 
 type NavItem = {
@@ -34,6 +36,8 @@ export function Sidebar() {
     { href: "/", label: "Inicio", icon: Home },
     { href: "/people", label: "Personas", icon: Users },
     { href: "/transactions", label: "Movimientos", icon: Wallet },
+    { href: "/transfers", label: "Transferencias", icon: ArrowRightLeft },
+    { href: "/accounts", label: "Cuentas", icon: CreditCard },
     { href: "/budgets", label: "Presupuestos", icon: PiggyBank },
     { href: "/categories", label: "Categorías", icon: Tags },
     { href: "/reports", label: "Reportes", icon: BarChart3 },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDownCircle, ArrowUpCircle, Save } from "lucide-react";
 import { useToast } from "../../../components/ui/Toast";
@@ -8,6 +8,7 @@ import { parseMoney, isValidDateYYYYMMDD } from "../../../lib/validators";
 
 type PersonRow = { _id: string; name: string };
 type CategoryRow = { _id: string; name: string; type: "income" | "expense" };
+type AccountRow = { _id: string; name: string; type: "cash" | "bank" | "wallet" | "credit" };
 
 type Form = {
   type: "income" | "expense";
@@ -15,6 +16,7 @@ type Form = {
   amount: string;
   personId: string;
   categoryId: string;
+  accountId: string; // "" = sin cuenta
   note: string;
 };
 
@@ -42,8 +44,11 @@ export default function NewTransactionClient({
     amount: "",
     personId: people[0]?._id ?? "",
     categoryId: "",
+    accountId: "",
     note: "",
   });
+
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -51,6 +56,29 @@ export default function NewTransactionClient({
   const filteredCategories = useMemo(() => {
     return categories.filter((c) => c.type === form.type);
   }, [categories, form.type]);
+
+  // Cuentas para selector (opcional)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/accounts", { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as
+          | { ok: true; accounts: AccountRow[] }
+          | { ok: false; error?: string }
+          | null;
+        if (cancelled) return;
+        if (res.ok && json && (json as { ok?: unknown }).ok === true) {
+          setAccounts((json as { accounts: AccountRow[] }).accounts ?? []);
+        }
+      } catch {
+        // silencioso: la cuenta es opcional
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function validate(f: Form): string | null {
     if (f.type !== "income" && f.type !== "expense") return "Tipo inválido.";
@@ -83,6 +111,7 @@ export default function NewTransactionClient({
         amount,
         personId: form.personId,
         categoryId: form.categoryId,
+        accountId: form.accountId || undefined,
         note: form.note ?? "",
       }),
     });
@@ -195,6 +224,25 @@ export default function NewTransactionClient({
 
             <div className="mt-1 text-[11px] text-[rgb(var(--subtext))]">
               Mostrando categorías de: <span className="font-semibold">{form.type === "income" ? "Ingresos" : "Gastos"}</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Cuenta (opcional)</div>
+            <select
+              value={form.accountId}
+              onChange={(e) => setForm((p) => ({ ...p, accountId: e.target.value }))}
+              className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Sin cuenta</option>
+              {accounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.name}{a.type === "credit" ? " (Tarjeta)" : ""}
+                </option>
+              ))}
+            </select>
+            <div className="mt-1 text-[11px] text-[rgb(var(--subtext))]">
+              Te sirve para filtrar por cuenta y, más adelante, para cierres de tarjeta.
             </div>
           </div>
 

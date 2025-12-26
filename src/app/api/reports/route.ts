@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     const match: Record<string, unknown> = {
       deletedAt: { $exists: false },
       date: { $gte: start, $lt: end },
+      type: { $in: ["income", "expense"] },
     };
 
     if (personId) {

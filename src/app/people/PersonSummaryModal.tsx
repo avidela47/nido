@@ -1,4 +1,14 @@
+
 "use client";
+type Tx = {
+  _id: string;
+  type: string;
+  amount: number;
+  date: string;
+  note?: string;
+  accountId?: string;
+  categoryId?: string;
+};
 
 import { useEffect, useMemo, useState } from "react";
 import { X, ArrowDownCircle, ArrowUpCircle, CalendarDays, WalletCards } from "lucide-react";
@@ -50,6 +60,7 @@ function formatPct(v: number | null | undefined): string {
   return `${v >= 0 ? "+" : ""}${Math.round(v * 100)}%`;
 }
 
+
 export default function PersonSummaryModal({
   person,
   open,
@@ -63,6 +74,26 @@ export default function PersonSummaryModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<Summary | null>(null);
+
+  // Estado para tab y movimientos por cuentas asociadas
+  const [tab, setTab] = useState<'resumen' | 'movimientos'>('resumen');
+  const [movs, setMovs] = useState<Tx[] | null>(null);
+  const [movsLoading, setMovsLoading] = useState(false);
+  const [movsError, setMovsError] = useState("");
+
+  useEffect(() => {
+    if (!open || !person?._id || tab !== 'movimientos') return;
+    setMovsLoading(true);
+    setMovsError("");
+    fetch(`/api/people/${person._id}/movements?month=${encodeURIComponent(month)}`)
+      .then(res => res.json())
+      .then(json => {
+        if (!json.ok) throw new Error(json.error || 'Error');
+        setMovs(json.items || []);
+      })
+      .catch(e => setMovsError(e.message || 'Error'))
+      .finally(() => setMovsLoading(false));
+  }, [open, person?._id, month, tab]);
 
   const title = person?.name ?? "Persona";
 
@@ -161,7 +192,19 @@ export default function PersonSummaryModal({
             </button>
           </div>
 
-          {/* Tarjeta estilo crédito */}
+          {/* Tabs */}
+          <div className="mt-4 flex gap-2">
+            <button
+              className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === 'resumen' ? 'bg-[rgb(var(--brand))] text-white' : 'bg-white border border-[rgb(var(--border))] text-[rgb(var(--text))]'}`}
+              onClick={() => setTab('resumen')}
+            >Resumen</button>
+            <button
+              className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === 'movimientos' ? 'bg-[rgb(var(--brand))] text-white' : 'bg-white border border-[rgb(var(--border))] text-[rgb(var(--text))]'}`}
+              onClick={() => setTab('movimientos')}
+            >Movimientos por cuentas</button>
+          </div>
+
+          {tab === 'resumen' && (
           <div className="mt-4 rounded-3xl bg-linear-to-br from-[rgb(var(--brand))] via-[rgb(var(--brand-2))] to-slate-900 p-4 text-white shadow-[0_18px_50px_rgba(2,6,23,0.4)]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -196,7 +239,35 @@ export default function PersonSummaryModal({
             </div>
           </div>
 
-          {/* Controles mes */}
+          )}
+
+          {tab === 'movimientos' && (
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold text-[rgb(var(--subtext))]">Movimientos de todas las cuentas de {title} ({monthLabel})</div>
+              {movsLoading ? (
+                <div className="text-sm text-[rgb(var(--subtext))]">Cargando movimientos…</div>
+              ) : movsError ? (
+                <div className="text-sm text-red-700">{movsError}</div>
+              ) : movs && movs.length > 0 ? (
+                <div className="max-h-64 overflow-y-auto divide-y divide-[rgb(var(--border))] bg-white rounded-2xl border border-[rgb(var(--border))]">
+                  {movs.map((tx) => (
+                    <div key={tx._id} className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+                      <div className="truncate">
+                        <span className={tx.type === 'income' ? 'text-green-700' : tx.type === 'expense' ? 'text-red-700' : 'text-blue-700'}>
+                          {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄'}
+                        </span>{' '}
+                        <span className="font-semibold">{tx.amount}</span>
+                        {tx.note ? <span className="text-[rgb(var(--subtext))]"> · {tx.note}</span> : null}
+                      </div>
+                      <div className="shrink-0 tabular-nums text-[rgb(var(--subtext))]">{tx.date?.slice(0,10)}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-[rgb(var(--subtext))]">Sin movimientos en el mes.</div>
+              )}
+            </div>
+          )}
           <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-[rgb(var(--subtext))]">

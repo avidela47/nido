@@ -56,6 +56,7 @@ export async function GET(req: Request) {
           $match: {
             deletedAt: { $exists: false },
             personId,
+            type: { $in: ["income", "expense"] },
           },
         },
         {
@@ -92,6 +93,7 @@ export async function GET(req: Request) {
             deletedAt: { $exists: false },
             personId,
             date: { $gte: start, $lt: end },
+            type: { $in: ["income", "expense"] },
           },
         },
         {
@@ -124,6 +126,7 @@ export async function GET(req: Request) {
             deletedAt: { $exists: false },
             personId,
             date: { $gte: prevStart, $lt: prevEnd },
+            type: { $in: ["income", "expense"] },
           },
         },
         {
@@ -156,6 +159,7 @@ export async function GET(req: Request) {
             deletedAt: { $exists: false },
             personId,
             date: { $gte: start, $lt: end },
+            type: { $in: ["income", "expense"] },
           },
         },
         {

@@ -26,6 +26,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       amount?: unknown;
       personId?: unknown;
       categoryId?: unknown;
+      accountId?: unknown;
       date?: unknown;
       note?: unknown;
     };
@@ -61,6 +62,32 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       update.categoryId = new ObjectId(b.categoryId);
     }
 
+    if (b.accountId !== undefined) {
+      // permitir null/"" para limpiar (Sin cuenta)
+      if (b.accountId === null) {
+        update.accountId = null;
+      } else if (typeof b.accountId !== "string") {
+        return NextResponse.json({ ok: false, error: "Cuenta inválida" }, { status: 400 });
+      } else if (!b.accountId.trim()) {
+        update.accountId = null;
+      } else if (!ObjectId.isValid(b.accountId)) {
+        return NextResponse.json({ ok: false, error: "Cuenta inválida" }, { status: 400 });
+      } else {
+        const accId = new ObjectId(b.accountId);
+        const db = await getDb();
+        const account = await db
+          .collection("accounts")
+          .findOne({ _id: accId, active: { $ne: false } });
+        if (!account) {
+          return NextResponse.json(
+            { ok: false, error: "La cuenta no existe" },
+            { status: 400 }
+          );
+        }
+        update.accountId = accId;
+      }
+    }
+
     if (b.date !== undefined) {
       if (typeof b.date !== "string" || !b.date.trim()) {
         return NextResponse.json({ ok: false, error: "Fecha inválida" }, { status: 400 });
@@ -79,7 +106,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       update.note = b.note.trim();
     }
 
-    const db = await getDb();
+  const db = await getDb();
 
     // Validación coherencia categoría vs tipo si ambos están
     const existing = await db.collection("transactions").findOne({ _id: new ObjectId(id) });

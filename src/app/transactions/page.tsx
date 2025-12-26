@@ -1,5 +1,6 @@
 import { SectionCard } from "../../components/ui/SectionCard";
 import TransactionsClient, { TxItem } from "./TransactionsClient";
+import { ObjectId } from "mongodb";
 
 function currentMonthYYYYMM(): string {
   const d = new Date();
@@ -19,24 +20,27 @@ async function getTransactions(month: string): Promise<TxItem[]> {
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; q?: string }>;
+  searchParams?: Promise<{ month?: string; q?: string; accountId?: string }>;
 }) {
   const sp = (await searchParams) ?? {};
   const month = sp.month ?? currentMonthYYYYMM();
   const q = (sp.q ?? "").trim().toLowerCase();
+  const accountId = (sp.accountId ?? "").trim();
   const items = await getTransactions(month);
 
+
   const filtered =
-    q.length === 0
+    !accountId
       ? items
-      : items.filter((t) => {
-          const hay = `${t.note} ${t.person.name} ${t.category.name}`.toLowerCase();
-          return hay.includes(q);
-        });
+      : accountId === "__none__"
+      ? items.filter((t) => !t.account)
+      : ObjectId.isValid(accountId)
+      ? items.filter((t) => t.account?._id === accountId)
+      : items;
 
   return (
     <SectionCard title="Movimientos" subtitle="Listado por mes. Editar o borrar (soft delete).">
-      <TransactionsClient month={month} items={filtered} />
+      <TransactionsClient month={month} items={filtered} q={q} />
     </SectionCard>
   );
 }
