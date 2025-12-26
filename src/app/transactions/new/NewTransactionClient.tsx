@@ -8,7 +8,7 @@ import { parseMoney, isValidDateYYYYMMDD } from "../../../lib/validators";
 
 type PersonRow = { _id: string; name: string };
 type CategoryRow = { _id: string; name: string; type: "income" | "expense" };
-type AccountRow = { _id: string; name: string; type: "cash" | "bank" | "wallet" | "credit" };
+type AccountRow = { _id: string; name: string; type: "cash" | "bank" | "wallet" | "credit"; person?: { _id: string; name: string } };
 
 type Form = {
   type: "income" | "expense";
@@ -49,6 +49,19 @@ export default function NewTransactionClient({
   });
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  // Filtrar cuentas según la persona seleccionada
+  const filteredAccounts = useMemo(() => {
+    if (!form.personId) return accounts;
+    return accounts.filter((a) => a.person && a.person._id === form.personId);
+  }, [accounts, form.personId]);
+
+  // Si la persona cambia y la cuenta seleccionada ya no corresponde, limpiar accountId
+  useEffect(() => {
+    if (!form.accountId) return;
+    const found = filteredAccounts.some((a) => a._id === form.accountId);
+    if (!found) setForm((p) => ({ ...p, accountId: "" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.personId, filteredAccounts]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -235,14 +248,14 @@ export default function NewTransactionClient({
               className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
             >
               <option value="">Sin cuenta</option>
-              {accounts.map((a) => (
+              {filteredAccounts.map((a) => (
                 <option key={a._id} value={a._id}>
                   {a.name}{a.type === "credit" ? " (Tarjeta)" : ""}
                 </option>
               ))}
             </select>
             <div className="mt-1 text-[11px] text-[rgb(var(--subtext))]">
-              Te sirve para filtrar por cuenta y, más adelante, para cierres de tarjeta.
+              Solo se muestran cuentas asociadas a la persona seleccionada.
             </div>
           </div>
 
