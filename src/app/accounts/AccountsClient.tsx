@@ -5,7 +5,7 @@ import { Plus, Pencil, Save, Trash2, X, CreditCard, Wallet, Landmark, Smartphone
 
 type SummaryItem = {
   key: string; // accountId o "__none__"
-  account: null | { _id: string; name: string; type: AccountType };
+  account: null | { _id: string; name: string; type: AccountType; person?: Person | null };
   income: number;
   expense: number;
   net: number;
@@ -256,6 +256,10 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
   }
 
   async function deactivate(a: Account) {
+    if (!a._id || a.name === "Sin cuenta") {
+      setError("No se puede borrar la cuenta 'Sin cuenta'.");
+      return;
+    }
     if (!confirm(`¿Desactivar la cuenta "${a.name}"? (No se borra del historial)`)) return;
 
     setBusy(true);
@@ -303,10 +307,16 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
           {(summary ?? []).map((s) => {
-            const t = s.account?.type ?? "cash";
+            // Ocultar la tarjeta 'Sin cuenta' (la que no tiene cuenta asociada)
+            if (!s.account) return null;
+            const t = s.account.type;
             const Icon = iconFor(t);
-            const label = s.account ? s.account.name : "Sin cuenta";
-            const filter = s.account ? s.account._id : "__none__";
+            // Mostrar 'Persona · Cuenta' si hay persona, si no solo cuenta
+            let label = s.account.name;
+            if (s.account.person && s.account.person.name && s.account.person.name.trim() && s.account.person.name.trim().toLowerCase() !== s.account.name.trim().toLowerCase()) {
+              label = `${s.account.person.name} · ${s.account.name}`;
+            }
+            const filter = s.account._id;
 
             return (
               <a
@@ -531,7 +541,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
                       </button>
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || a.name === "Sin cuenta"}
                         onClick={() => deactivate(a)}
                         className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-70"
                       >

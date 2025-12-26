@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type AccountRow = { _id: string; name: string; type: "cash" | "bank" | "wallet" | "credit" };
+type Person = { _id: string; name: string };
+
+type AccountRow = { _id: string; name: string; type: "cash" | "bank" | "wallet" | "credit"; person?: Person | null };
 
 type TransferTx = {
   _id: string;
@@ -67,10 +69,14 @@ function money(n: number): string {
   }
 }
 
+
 export default function TransfersClient({ month, initial }: { month: string; initial: TransferTx[] }) {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
   const [items, setItems] = useState<TransferTx[]>(initial);
 
+  const [fromPersonId, setFromPersonId] = useState<string>("");
+  const [toPersonId, setToPersonId] = useState<string>("");
   const [fromAccountId, setFromAccountId] = useState<string>("");
   const [toAccountId, setToAccountId] = useState<string>("");
   const [date, setDate] = useState<string>(() => {
@@ -92,27 +98,29 @@ export default function TransfersClient({ month, initial }: { month: string; ini
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/accounts", { cache: "no-store" });
-        const json = (await res.json().catch(() => null)) as
-          | { ok: true; accounts: AccountRow[] }
-          | { ok: false; error?: string }
-          | null;
+        const [accRes, peopleRes] = await Promise.all([
+          fetch("/api/accounts", { cache: "no-store" }),
+          fetch("/api/people", { cache: "no-store" })
+        ]);
+        const accJson = (await accRes.json().catch(() => null)) as { ok: true; accounts: AccountRow[] } | { ok: false; error?: string } | null;
+        const peopleJson = (await peopleRes.json().catch(() => null)) as { ok: true; people: Person[] } | { ok: false; error?: string } | null;
         if (cancelled) return;
-        if (res.ok && json && (json as { ok?: unknown }).ok === true) {
-          const list = (json as { accounts: AccountRow[] }).accounts ?? [];
-          setAccounts(list);
-          setFromAccountId((p) => p || list[0]?._id || "");
+        if (accRes.ok && accJson && accJson.ok === true) {
+          setAccounts(accJson.accounts ?? []);
         }
-      } catch {
-        // opcional
-      }
+        if (peopleRes.ok && peopleJson && peopleJson.ok === true) {
+          setPeople(peopleJson.people ?? []);
+          setFromPersonId((p) => p || (peopleJson.people[0]?._id ?? ""));
+          setToPersonId((p) => p || (peopleJson.people[0]?._id ?? ""));
+        }
+      } catch {}
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const accMap = useMemo(() => new Map(accounts.map((a) => [a._id, a])), [accounts]);
+  const fromAccounts = useMemo(() => accounts.filter(a => a.person && a.person._id === fromPersonId), [accounts, fromPersonId]);
+  const toAccounts = useMemo(() => accounts.filter(a => a.person && a.person._id === toPersonId), [accounts, toPersonId]);
 
   async function create() {
     setError("");
@@ -178,14 +186,24 @@ export default function TransfersClient({ month, initial }: { month: string; ini
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Cuenta origen</div>
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Persona origen</div>
+            <select
+              value={fromPersonId}
+              onChange={e => { setFromPersonId(e.target.value); setFromAccountId(""); }}
+              className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
+            >
+              {people.map((p) => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))] mt-2">Cuenta origen</div>
             <select
               value={fromAccountId}
               onChange={(e) => setFromAccountId(e.target.value)}
               className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
             >
               <option value="">Seleccionar…</option>
-              {accounts.map((a) => (
+              {fromAccounts.map((a) => (
                 <option key={a._id} value={a._id}>
                   {a.name}{a.type === "credit" ? " (Tarjeta)" : ""}
                 </option>
@@ -194,14 +212,24 @@ export default function TransfersClient({ month, initial }: { month: string; ini
           </div>
 
           <div>
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Cuenta destino</div>
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Persona destino</div>
+            <select
+              value={toPersonId}
+              onChange={e => { setToPersonId(e.target.value); setToAccountId(""); }}
+              className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
+            >
+              {people.map((p) => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))] mt-2">Cuenta destino</div>
             <select
               value={toAccountId}
               onChange={(e) => setToAccountId(e.target.value)}
               className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
             >
               <option value="">Seleccionar…</option>
-              {accounts.map((a) => (
+              {toAccounts.map((a) => (
                 <option key={a._id} value={a._id}>
                   {a.name}{a.type === "credit" ? " (Tarjeta)" : ""}
                 </option>
