@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+type PersonRow = { _id: string; name: string };
+
 type AccountRow = {
   _id: string;
   name: string;
   type?: string;
+  person?: { _id: string; name: string } | null;
 };
 
 export type TxItem = {
@@ -55,6 +58,8 @@ export default function TransactionsClient({ month, items, q }: { month: string;
 
   const [busyId, setBusyId] = useState<string>("");
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [people, setPeople] = useState<PersonRow[]>([]);
+  const [personParam, setPersonParam] = useState<string>("");
 
   const monthValue = useMemo(() => month || currentMonthYYYYMM(), [month]);
   const accountParam = useMemo(() => params.get("accountId") ?? "", [params]);
@@ -110,24 +115,22 @@ export default function TransactionsClient({ month, items, q }: { month: string;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/accounts", { cache: "no-store" });
-        const json = (await res.json().catch(() => null)) as
-          | { ok: true; accounts: AccountRow[] }
-          | { ok: false; error?: string }
-          | null;
-
+        const [accRes, peopleRes] = await Promise.all([
+          fetch("/api/accounts", { cache: "no-store" }),
+          fetch("/api/people", { cache: "no-store" })
+        ]);
+        const accJson = (await accRes.json().catch(() => null)) as { ok: true; accounts: AccountRow[] } | { ok: false; error?: string } | null;
+        const peopleJson = (await peopleRes.json().catch(() => null)) as { ok: true; people: PersonRow[] } | { ok: false; error?: string } | null;
         if (cancelled) return;
-        if (res.ok && json && (json as { ok?: unknown }).ok === true) {
-          setAccounts((json as { accounts: AccountRow[] }).accounts ?? []);
+        if (accRes.ok && accJson && accJson.ok === true) {
+          setAccounts(accJson.accounts ?? []);
         }
-      } catch {
-        // opcional
-      }
+        if (peopleRes.ok && peopleJson && peopleJson.ok === true) {
+          setPeople(peopleJson.people ?? []);
+        }
+      } catch {}
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   async function remove(id: string) {
@@ -227,10 +230,16 @@ export default function TransactionsClient({ month, items, q }: { month: string;
     return { income, expense, net: income - expense };
   }, [visibleItems]);
 
+  // Filtrar items por persona si está seleccionada
+  const filteredItems = useMemo(() => {
+    if (!personParam) return visibleItems;
+    return visibleItems.filter((t) => t.person?._id === personParam);
+  }, [visibleItems, personParam]);
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="flex flex-wrap gap-2 md:items-center">
           <div className="flex items-center gap-2">
             <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
             <input
@@ -242,20 +251,35 @@ export default function TransactionsClient({ month, items, q }: { month: string;
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Cuenta</div>
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Persona</div>
             <select
-              value={accountParam}
-              onChange={(e) => setAccountFilter(e.target.value)}
+              value={personParam}
+              onChange={e => setPersonParam(e.target.value)}
               className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
             >
               <option value="">Todas</option>
-              <option value="__none">Sin cuenta</option>
-              {accounts.map((a) => (
-                <option key={a._id} value={a._id}>
-                  {a.name}
-                </option>
+              {people.map((p) => (
+                <option key={p._id} value={p._id}>{p.name}</option>
               ))}
             </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Cuenta</div>
+              <select
+                value={accountParam}
+                onChange={(e) => setAccountFilter(e.target.value)}
+                className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
+              >
+                <option value="">Todas</option>
+                <option value="__none">Sin cuenta</option>
+                {accounts
+                  .filter(a => !personParam || (a.person && a.person._id === personParam))
+                  .map((a) => (
+                    <option key={a._id} value={a._id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
           </div>
 
           <label className="flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold">
@@ -299,8 +323,8 @@ export default function TransactionsClient({ month, items, q }: { month: string;
         </div>
       </div>
 
-      <div className="space-y-2">
-                {visibleItems.map((t) => {
+  <div className="space-y-2">
+        {filteredItems.map((t) => {
                   const isTransfer = t.type === "transfer";
                   const meta = isTransfer ? t.__transfer ?? null : null;
 
