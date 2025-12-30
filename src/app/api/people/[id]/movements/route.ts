@@ -3,9 +3,10 @@ import { ObjectId } from "mongodb";
 import { getDb } from "lib/mongodb";
 
 // Endpoint: /api/people/[id]/movements?month=YYYY-MM
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const personId = params.id;
+    const { params } = context;
+    const { id: personId } = await params;
     const url = new URL(req.url);
     const month = url.searchParams.get("month");
     if (!personId || !ObjectId.isValid(personId)) {
