@@ -54,7 +54,16 @@ export async function GET(req: Request) {
         _id: ObjectId;
         name?: unknown;
         type?: unknown;
+        person?: { _id?: ObjectId | string; name?: string } | null;
       };
+
+      let person: { _id: string; name: string } | undefined = undefined;
+      if (doc.person && doc.person._id && doc.person.name) {
+        person = {
+          _id: typeof doc.person._id === 'string' ? doc.person._id : doc.person._id.toString(),
+          name: doc.person.name,
+        };
+      }
 
       return {
         _id: doc._id.toString(),
@@ -63,6 +72,7 @@ export async function GET(req: Request) {
           doc.type === "cash" || doc.type === "bank" || doc.type === "wallet" || doc.type === "credit"
             ? (doc.type as "cash" | "bank" | "wallet" | "credit")
             : "cash",
+        person,
       };
     });
 

@@ -152,7 +152,7 @@ export default function PeopleClient({ initialPeople }: { initialPeople: Person[
                 <button
                   type="button"
                   onClick={() => setOpenSummaryId(p._id)}
-                  className="truncate text-left font-semibold hover:underline"
+                  className="truncate text-left font-semibold hover:underline cursor-pointer"
                   title="Ver resumen"
                 >
                   {p.name}

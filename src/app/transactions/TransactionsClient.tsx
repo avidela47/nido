@@ -1,3 +1,5 @@
+  // Botón flotante para nuevo movimiento, definido justo antes del return para acceder a monthValue
+
 "use client";
 
 import Link from "next/link";
@@ -238,6 +240,30 @@ export default function TransactionsClient({ month, items, q }: { month: string;
 
   return (
     <div className="space-y-3">
+      <a
+        href={`/transactions/new?month=${encodeURIComponent(monthValue)}`}
+        style={{
+          position: 'fixed',
+          right: 24,
+          bottom: 24,
+          zIndex: 1000,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+          background: '#22c55e', // verde
+          color: '#fff',
+          borderRadius: '24px',
+          padding: '10px 20px',
+          fontSize: '1rem',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+        }}
+        title="Nuevo movimiento"
+      >
+        <span style={{fontSize: '1.5rem', fontWeight: 900, lineHeight: 1}}>＋</span>
+        <span>Nuevo</span>
+      </a>
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-wrap gap-2 md:items-center">
           <div className="flex items-center gap-2">
@@ -296,6 +322,15 @@ export default function TransactionsClient({ month, items, q }: { month: string;
               className="w-64 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
             />
           </div>
+        </div>
+
+        <div className="w-full flex justify-end">
+          <Link
+            href={`/transactions/new?month=${encodeURIComponent(monthValue)}`}
+            className="inline-flex items-center justify-center rounded-2xl bg-[rgb(var(--primary))] px-4 py-2 text-sm font-semibold text-white mt-2"
+          >
+            Nuevo movimiento
+          </Link>
         </div>
 
         <Link

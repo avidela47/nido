@@ -312,10 +312,8 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
             const t = s.account.type;
             const Icon = iconFor(t);
             // Mostrar 'Persona · Cuenta' si hay persona, si no solo cuenta
-            let label = s.account.name;
-            if (s.account.person && s.account.person.name && s.account.person.name.trim() && s.account.person.name.trim().toLowerCase() !== s.account.name.trim().toLowerCase()) {
-              label = `${s.account.person.name} · ${s.account.name}`;
-            }
+            // Mostrar siempre el propietario si existe
+            const owner = s.account.person && s.account.person.name ? s.account.person.name : null;
             const filter = s.account._id;
 
             return (
@@ -330,7 +328,14 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
                       <span className={`inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-semibold ${badgeClass(t)}`}>
                         <Icon size={14} /> {typeLabel(t)}
                       </span>
-                      <div className="truncate text-sm font-semibold group-hover:underline">{label}</div>
+                      <div className="min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <div className="truncate text-sm font-semibold group-hover:underline">{s.account.name}</div>
+                          {owner ? (
+                            <div className="shrink-0 text-xs text-[rgb(var(--subtext))]">por {owner}</div>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                     <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
                       {s.count} mov. · Neto: <span className="font-semibold">{money(s.net)}</span>
