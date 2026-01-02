@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 
 type Category = {
@@ -11,7 +11,6 @@ type Category = {
 };
 
 type Props = { initial: Category[] };
-
 export default function CategoriesClient({ initial }: Props) {
   const toast = useToast();
   const [items, setItems] = useState<Category[]>(initial);
@@ -38,67 +37,78 @@ export default function CategoriesClient({ initial }: Props) {
   }
 
   return (
-    <div className="flex justify-center w-full py-8 bg-gray-50 min-h-[80vh]">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-md border border-gray-100 p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">Categorías</h2>
-        <p className="text-gray-500 text-sm mb-6">Gestioná tus categorías de gastos e ingresos.</p>
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            // Aquí podrías agregar la lógica para crear una categoría
-          }}
-          className="flex flex-col sm:flex-row gap-2 items-center mb-6"
-        >
-          <input
-            type="text"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="Nombre de la categoría"
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
-            disabled={busy}
-          />
-          <select
-            value={newType}
-            onChange={e => setNewType(e.target.value as Category["type"])}
-            className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
-            disabled={busy}
+    <div className="w-full min-h-[80vh] flex flex-col items-center justify-start bg-gray-50">
+      <div className="w-full max-w-3xl px-2 py-10">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Categorías</h2>
+          <p className="text-gray-500 text-sm mb-6">Gestioná tus categorías de gastos e ingresos.</p>
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              // Aquí podrías agregar la lógica para crear una categoría
+            }}
+            className="flex gap-3 items-center mb-6"
           >
-            <option value="expense">Gasto</option>
-            <option value="income">Ingreso</option>
-          </select>
-          <button
-            type="submit"
-            className="rounded-xl bg-emerald-500 hover:bg-emerald-600 px-6 py-2 text-sm font-semibold text-white disabled:opacity-60 transition"
-            disabled={busy}
-          >Agregar</button>
-        </form>
-        {items.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">No hay categorías.</div>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {items.map((c) => (
-              <li key={c._id} className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className={`inline-block w-2 h-2 rounded-full ${c.type === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
-                  <span className="font-medium text-gray-900 text-base truncate">{c.name}</span>
-                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${c.type === "income" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-blue-50 text-blue-700 border border-blue-100"}`}>
-                    {c.type === "income" ? "Ingreso" : "Gasto"}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => deleteCategory(c)}
-                  disabled={busy}
-                  className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-60 border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition"
-                  title="Borrar"
-                >
-                  <Trash2 size={16} />
-                  Borrar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+            <input
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="Nombre de la categoría"
+              className="flex-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
+              disabled={busy}
+            />
+            <select
+              value={newType}
+              onChange={e => setNewType(e.target.value as Category["type"])}
+              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
+              disabled={busy}
+            >
+              <option value="expense">Gasto</option>
+              <option value="income">Ingreso</option>
+            </select>
+            <button
+              type="submit"
+              className="rounded-full bg-emerald-500 hover:bg-emerald-600 px-6 py-2 text-sm font-semibold text-white disabled:opacity-60 transition"
+              disabled={busy}
+            >Agregar</button>
+          </form>
+          {items.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">No hay categorías.</div>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {items.map((c) => (
+                <li key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-3 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
+                    <span className={`inline-block w-2 h-2 rounded-full mt-1 sm:mt-0 ${c.type === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
+                    <span className="font-semibold text-gray-900 text-base truncate">{c.name}</span>
+                    <span className="text-xs text-gray-500 ml-0 sm:ml-2">Tipo: {c.type === "income" ? "Ingreso" : "Gasto"}</span>
+                  </div>
+                  <div className="flex gap-2 mt-2 sm:mt-0">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                      title="Editar"
+                      disabled={busy}
+                    >
+                      <Pencil size={15} />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteCategory(c)}
+                      disabled={busy}
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition"
+                      title="Borrar"
+                    >
+                      <Trash2 size={15} />
+                      Borrar
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
