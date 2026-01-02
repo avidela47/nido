@@ -38,8 +38,8 @@ export default function CategoriesClient({ initial }: Props) {
 
   return (
     <div className="w-full min-h-[80vh] flex flex-col items-center justify-start bg-gray-50">
-      <div className="w-full max-w-3xl px-2 py-10">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+  <div className="w-full px-0 pt-0 pb-10">
+        <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-1">Categorías</h2>
           <p className="text-gray-500 text-sm mb-6">Gestioná tus categorías de gastos e ingresos.</p>
           <form
