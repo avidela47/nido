@@ -36,6 +36,7 @@ export function Sidebar() {
     { href: "/", label: "Inicio", icon: Home },
     { href: "/people", label: "Personas", icon: Users },
     { href: "/transactions", label: "Movimientos", icon: Wallet },
+    { href: "/pagos", label: "Pagos", icon: Wallet },
     { href: "/transfers", label: "Transferencias", icon: ArrowRightLeft },
     { href: "/accounts", label: "Cuentas", icon: CreditCard },
     { href: "/budgets", label: "Presupuestos", icon: PiggyBank },

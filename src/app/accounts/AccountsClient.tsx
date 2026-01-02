@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "../../components/ui/Toast";
 import { Plus, Pencil, Save, Trash2, X, CreditCard, Wallet, Landmark, Smartphone } from "lucide-react";
 
 type SummaryItem = {
@@ -51,6 +52,7 @@ function normalizeName(v: string): string {
 }
 
 export default function AccountsClient({ initial, people }: { initial: Account[]; people: Person[] }) {
+  const toast = useToast();
   const [items, setItems] = useState<Account[]>(initial);
 
   const [month, setMonth] = useState<string>(() => {
@@ -178,7 +180,10 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
       });
 
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "No se pudo crear.");
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error al crear cuenta", description: json?.error ?? "No se pudo crear.", variant: "error" });
+        throw new Error(json?.error ?? "No se pudo crear.");
+      }
 
       const next: Account = {
         _id: String(json.id),
@@ -194,6 +199,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
       setItems((p) => [...p, next]);
       setCreating(false);
+      toast.push({ title: "Cuenta creada", description: "La cuenta fue creada correctamente.", variant: "ok" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear.");
     } finally {
@@ -228,7 +234,10 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
       });
 
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "No se pudo guardar.");
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error al guardar cuenta", description: json?.error ?? "No se pudo guardar.", variant: "error" });
+        throw new Error(json?.error ?? "No se pudo guardar.");
+      }
 
       setItems((p) =>
         p.map((a) =>
@@ -248,6 +257,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
       );
 
       setEditingId(null);
+      toast.push({ title: "Cuenta guardada", description: "La cuenta fue editada correctamente.", variant: "ok" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
@@ -267,9 +277,13 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
     try {
       const res = await fetch(`/api/accounts?id=${encodeURIComponent(a._id)}`, { method: "DELETE" });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "No se pudo desactivar.");
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error al desactivar cuenta", description: json?.error ?? "No se pudo desactivar.", variant: "error" });
+        throw new Error(json?.error ?? "No se pudo desactivar.");
+      }
 
       setItems((p) => p.map((x) => (x._id === a._id ? { ...x, active: false } : x)));
+      toast.push({ title: "Cuenta desactivada", description: "La cuenta fue desactivada correctamente.", variant: "ok" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo desactivar.");
     } finally {

@@ -157,6 +157,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "La cuenta destino no existe" }, { status: 400 });
     }
 
+    // Validar saldo suficiente en la cuenta origen
+    const saldoOrigenAgg = await db.collection("transactions").aggregate([
+      { $match: { accountId: fromId, deletedAt: { $exists: false } } },
+      {
+        $group: {
+          _id: "$accountId",
+          ingresos: {
+            $sum: {
+              $cond: [ { $eq: ["$type", "income"] }, "$amount", 0 ]
+            }
+          },
+          gastos: {
+            $sum: {
+              $cond: [ { $eq: ["$type", "expense"] }, "$amount", 0 ]
+            }
+          },
+          transferOut: {
+            $sum: {
+              $cond: [ { $eq: ["$type", "transfer"] }, { $cond: [ { $eq: ["$transferSide", "out"] }, "$amount", 0 ] }, 0 ]
+            }
+          },
+          transferIn: {
+            $sum: {
+              $cond: [ { $eq: ["$type", "transfer"] }, { $cond: [ { $eq: ["$transferSide", "in"] }, "$amount", 0 ] }, 0 ]
+            }
+          },
+        }
+      }
+    ]).toArray();
+    const saldoOrigen = saldoOrigenAgg.length > 0
+      ? (saldoOrigenAgg[0].ingresos + saldoOrigenAgg[0].transferIn) - (saldoOrigenAgg[0].gastos + saldoOrigenAgg[0].transferOut)
+      : 0;
+    if (saldoOrigen < numAmount) {
+      return NextResponse.json({ ok: false, error: "Fondos insuficientes en la cuenta origen" }, { status: 400 });
+    }
+
     // Agrupador: un ObjectId nuevo en el campo transferGroupId
     const groupId = new ObjectId();
     const now = new Date();

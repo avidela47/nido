@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useToast } from "../../../components/ui/Toast";
 
 export type TransferLeg = {
   _id: string;
@@ -101,6 +102,7 @@ export default function TransferDetailsClient({ groupId, legs }: { groupId: stri
     }
   }
 
+  const toast = useToast();
   async function removeTransfer() {
     if (!confirm("¿Eliminar esta transferencia? (se ocultan ambas patas)")) return;
     setBusy(true);
@@ -108,7 +110,11 @@ export default function TransferDetailsClient({ groupId, legs }: { groupId: stri
     try {
       const res = await fetch(`/api/transfers/${encodeURIComponent(groupId)}`, { method: "DELETE" });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "No se pudo borrar.");
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error al eliminar", description: json?.error ?? "No se pudo borrar.", variant: "error" });
+        throw new Error(json?.error ?? "No se pudo borrar.");
+      }
+      toast.push({ title: "Transferencia eliminada", description: "La transferencia fue eliminada correctamente.", variant: "ok" });
       window.location.href = "/transfers";
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo borrar.");

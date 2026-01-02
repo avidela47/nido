@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "../../components/ui/Toast";
 import { Pencil, Save, Trash2, X } from "lucide-react";
 import PersonSummaryModal from "./PersonSummaryModal";
 
@@ -12,6 +13,7 @@ type Person = {
 };
 
 export default function PeopleClient({ initialPeople }: { initialPeople: Person[] }) {
+  const toast = useToast();
   const router = useRouter();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,11 +40,13 @@ export default function PeopleClient({ initialPeople }: { initialPeople: Person[
     if (!res.ok || !json?.ok) {
       setLoading(false);
       setError(json?.error ?? "No se pudo agregar.");
+      toast.push({ title: "Error al agregar persona", description: json?.error ?? "No se pudo agregar.", variant: "error" });
       return;
     }
 
     setLoading(false);
     setName("");
+    toast.push({ title: "Persona agregada", description: "La persona fue agregada correctamente.", variant: "ok" });
     router.refresh();
   }
 
@@ -77,10 +81,12 @@ export default function PeopleClient({ initialPeople }: { initialPeople: Person[
 
     if (!res.ok || !json?.ok) {
       setError(json?.error ?? "No se pudo guardar.");
+      toast.push({ title: "Error al guardar persona", description: json?.error ?? "No se pudo guardar.", variant: "error" });
       return;
     }
 
     cancelEdit();
+    toast.push({ title: "Persona guardada", description: "La persona fue editada correctamente.", variant: "ok" });
     router.refresh();
   }
 
@@ -104,10 +110,12 @@ export default function PeopleClient({ initialPeople }: { initialPeople: Person[
 
     if (!res.ok || !json?.ok) {
       setError(json?.error ?? "No se pudo borrar.");
+      toast.push({ title: "Error al borrar persona", description: json?.error ?? "No se pudo borrar.", variant: "error" });
       return;
     }
 
     if (editingId === p._id) cancelEdit();
+    toast.push({ title: "Persona borrada", description: "La persona fue eliminada correctamente.", variant: "ok" });
     router.refresh();
   }
 

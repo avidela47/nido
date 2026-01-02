@@ -138,6 +138,7 @@ export default function NewTransactionClient({
       toast.push({ title: "Error al guardar", description: msg2, variant: "error" });
       return;
     }
+    toast.push({ title: "Movimiento guardado", description: "El ingreso/gasto fue registrado correctamente.", variant: "ok" });
 
     toast.push({ title: "Guardado", description: "Movimiento creado correctamente.", variant: "ok" });
 

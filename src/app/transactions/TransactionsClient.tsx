@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "../../components/ui/Toast";
 
 type PersonRow = { _id: string; name: string };
 
@@ -135,9 +136,20 @@ export default function TransactionsClient({ month, items, q }: { month: string;
     return () => { cancelled = true; };
   }, []);
 
+  const toast = useToast();
   async function remove(id: string) {
     setBusyId(id);
-    await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error al eliminar", description: json?.error ?? "No se pudo borrar.", variant: "error" });
+      } else {
+        toast.push({ title: "Movimiento eliminado", description: "El movimiento fue eliminado correctamente.", variant: "ok" });
+      }
+    } catch (e) {
+      toast.push({ title: "Error al eliminar", description: "No se pudo borrar.", variant: "error" });
+    }
     setBusyId("");
     router.refresh();
   }
