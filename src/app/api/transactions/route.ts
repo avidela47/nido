@@ -11,7 +11,7 @@ type TxType = "income" | "expense" | "transfer";
 
 type PersonDoc = { _id: ObjectId; name?: unknown; active?: unknown };
 type CategoryDoc = { _id: ObjectId; name?: unknown; type?: unknown };
-type AccountDoc = { _id: ObjectId; name?: unknown; type?: unknown; active?: unknown };
+type AccountDoc = { _id: ObjectId; name?: unknown; type?: unknown; active?: unknown; person?: { _id?: unknown; name?: unknown } };
 
 type TxDoc = {
   _id: ObjectId;
@@ -131,6 +131,14 @@ export async function GET(req: Request) {
           name: typeof a.name === "string" ? a.name : "—",
           type: typeof a.type === "string" ? a.type : "cash",
           active: a.active !== false,
+          person: a.person && typeof a.person === "object"
+            ? {
+                _id: typeof a.person._id === "string"
+                  ? a.person._id
+                  : (a.person._id instanceof ObjectId ? a.person._id.toString() : ""),
+                name: typeof a.person.name === "string" ? a.person.name : "—",
+              }
+            : null,
         },
       ])
     );
@@ -165,7 +173,11 @@ export async function GET(req: Request) {
         note: typeof t.note === "string" ? t.note : "",
         person: { id: personId, name: personName },
         category: { id: categoryId, name: cat.name, type: cat.type },
-        account: accountId && acc ? { id: accountId, name: acc.name } : null,
+        account: accountId && acc ? {
+          id: accountId,
+          name: acc.name,
+          person: acc.person ? (typeof acc.person === "object" && acc.person._id ? { _id: acc.person._id.toString(), name: acc.person.name ?? "—" } : null) : null
+        } : null,
         transfer: type === "transfer" && transferGroupId
           ? { groupId: transferGroupId, side: transferSide }
           : null,

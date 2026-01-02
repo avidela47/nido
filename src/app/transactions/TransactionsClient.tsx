@@ -24,7 +24,7 @@ export type TxItem = {
   note?: string;
   category?: { _id: string; name: string } | null;
   person?: { _id: string; name: string } | null;
-  account?: { _id: string; name: string } | null;
+  account?: { _id: string; name: string; person?: { _id: string; name: string } | null } | null;
   transfer?: { groupId?: string; side?: "in" | "out" } | null;
 };
 
@@ -62,7 +62,25 @@ export default function TransactionsClient({ month, items, q }: { month: string;
   const [busyId, setBusyId] = useState<string>("");
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [people, setPeople] = useState<PersonRow[]>([]);
-  const [personParam, setPersonParam] = useState<string>("");
+  // Sincronizar personParam con searchParams
+  const personParam = useMemo(() => params.get("personId") ?? "", [params]);
+  const setPersonParam = (next: string) => {
+    const sp = new URLSearchParams(params.toString());
+    if (!next) sp.delete("personId");
+    else sp.set("personId", next);
+    router.push(`/transactions?${sp.toString()}`);
+  };
+
+  // Resetear cuenta si la cuenta seleccionada no pertenece a la persona seleccionada
+  useEffect(() => {
+    if (!personParam) return;
+    // Buscar cuentas válidas para la persona
+    const validAccounts = accounts.filter(a => a.person && a.person._id === personParam).map(a => a._id);
+    if (accountParam && !validAccounts.includes(accountParam)) {
+      setAccountFilter("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personParam, accounts]);
 
   const monthValue = useMemo(() => month || currentMonthYYYYMM(), [month]);
   const accountParam = useMemo(() => params.get("accountId") ?? "", [params]);
@@ -147,7 +165,7 @@ export default function TransactionsClient({ month, items, q }: { month: string;
       } else {
         toast.push({ title: "Movimiento eliminado", description: "El movimiento fue eliminado correctamente.", variant: "ok" });
       }
-    } catch (e) {
+    } catch {
       toast.push({ title: "Error al eliminar", description: "No se pudo borrar.", variant: "error" });
     }
     setBusyId("");
@@ -246,9 +264,41 @@ export default function TransactionsClient({ month, items, q }: { month: string;
 
   // Filtrar items por persona si está seleccionada
   const filteredItems = useMemo(() => {
-    if (!personParam) return visibleItems;
-    return visibleItems.filter((t) => t.person?._id === personParam);
-  }, [visibleItems, personParam]);
+    // Si no hay filtro de persona ni de cuenta, mostrar todo
+    if (!personParam && !accountParam) return visibleItems;
+
+    return visibleItems.filter((t) => {
+      // Si ambos filtros están activos, exigir ambos
+      if (personParam && accountParam) {
+        const personMatch = t.person && typeof t.person === "object" && t.person !== null && typeof t.person._id === "string" && t.person._id === personParam;
+        const accountMatch = t.account && typeof t.account === "object" && t.account !== null && typeof t.account._id === "string" && t.account._id === accountParam;
+        // Además, permitir si la cuenta pertenece a la persona seleccionada
+        const acc = accounts.find(a => a._id === accountParam);
+        const accountPersonMatch = acc && acc.person && acc.person._id === personParam;
+        return (personMatch && accountMatch) || accountPersonMatch;
+      }
+      // Solo filtro de persona
+      if (personParam) {
+        if (t.person && typeof t.person === "object" && t.person !== null && typeof t.person._id === "string") {
+          if (t.person._id === personParam) return true;
+        }
+        const accId = t.account && typeof t.account === "object" && t.account !== null && typeof t.account._id === "string" ? t.account._id : null;
+        if (accId) {
+          const acc = accounts.find(a => a._id === accId);
+          if (acc && acc.person && acc.person._id === personParam) return true;
+        }
+        return false;
+      }
+      // Solo filtro de cuenta
+      if (accountParam) {
+        if (t.account && typeof t.account === "object" && t.account !== null && typeof t.account._id === "string") {
+          if (t.account._id === accountParam) return true;
+        }
+        return false;
+      }
+      return true;
+    });
+  }, [visibleItems, personParam, accountParam, accounts]);
 
   return (
     <div className="space-y-3">
@@ -376,9 +426,20 @@ export default function TransactionsClient({ month, items, q }: { month: string;
                   const meta = isTransfer ? t.__transfer ?? null : null;
 
                   const displayDate = isTransfer ? meta?.date ?? t.date : t.date;
-                  const title = isTransfer
-                    ? `Transferencia · ${(meta?.fromAccount?.name ?? "(Sin cuenta)")} → ${(meta?.toAccount?.name ?? "(Sin cuenta)")}`
-                    : t.note?.trim() || "(Sin nota)";
+                  let title = "";
+                  if (isTransfer) {
+                    title = `Transferencia · ${(meta?.fromAccount?.name ?? "(Sin cuenta)")} → ${(meta?.toAccount?.name ?? "(Sin cuenta)")}`;
+                  } else if (t.note && t.note.trim()) {
+                    title = t.note.trim();
+                  } else if (t.account?.name) {
+                    title = t.account.name;
+                  } else if (t.person?.name) {
+                    title = t.person.name;
+                  } else if (t.category?.name) {
+                    title = t.category.name;
+                  } else {
+                    title = "(Sin nota)";
+                  }
 
                   const amountText = isTransfer ? moneyTransfer(meta?.amount ?? t.amount, "out") : money(t.amount);
 

@@ -17,6 +17,21 @@ export default function CategoriesClient({ initial }: Props) {
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<Category["type"]>("expense");
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState<Category["type"]>("expense");
+
+  function startEdit(c: Category) {
+    setEditingId(c._id);
+    setEditName(c.name);
+    setEditType(c.type);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditName("");
+    setEditType("expense");
+  }
 
   async function deleteCategory(c: Category) {
     setBusy(true);
@@ -36,9 +51,30 @@ export default function CategoriesClient({ initial }: Props) {
     }
   }
 
+  async function saveEdit(c: Category) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/categories`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c._id, name: editName, type: editType }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error al editar categoría", description: json?.error ?? "No se pudo editar.", variant: "error" });
+        return;
+      }
+      setItems((prev) => prev.map((x) => x._id === c._id ? { ...x, name: editName, type: editType } : x));
+      toast.push({ title: "Categoría editada", description: "La categoría fue editada correctamente.", variant: "ok" });
+      cancelEdit();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="w-full min-h-[80vh] flex flex-col items-center justify-start bg-gray-50">
-  <div className="w-full px-0 pt-0 pb-10">
+      <div className="w-full px-0 pt-0 pb-10">
         <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-1">Categorías</h2>
           <p className="text-gray-500 text-sm mb-6">Gestioná tus categorías de gastos e ingresos.</p>
@@ -78,32 +114,79 @@ export default function CategoriesClient({ initial }: Props) {
             <ul className="flex flex-col gap-3">
               {items.map((c) => (
                 <li key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-3 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
-                    <span className={`inline-block w-2 h-2 rounded-full mt-1 sm:mt-0 ${c.type === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
-                    <span className="font-semibold text-gray-900 text-base truncate">{c.name}</span>
-                    <span className="text-xs text-gray-500 ml-0 sm:ml-2">Tipo: {c.type === "income" ? "Ingreso" : "Gasto"}</span>
-                  </div>
-                  <div className="flex gap-2 mt-2 sm:mt-0">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
-                      title="Editar"
-                      disabled={busy}
-                    >
-                      <Pencil size={15} />
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteCategory(c)}
-                      disabled={busy}
-                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition"
-                      title="Borrar"
-                    >
-                      <Trash2 size={15} />
-                      Borrar
-                    </button>
-                  </div>
+                  {editingId === c._id ? (
+                    <>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
+                        <span className={`inline-block w-2 h-2 rounded-full mt-1 sm:mt-0 ${editType === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={e => setEditName(e.target.value)}
+                          className="font-semibold text-gray-900 text-base truncate border rounded px-2 py-1 mr-2"
+                          disabled={busy}
+                        />
+                        <select
+                          value={editType}
+                          onChange={e => setEditType(e.target.value as Category["type"])}
+                          className="text-xs border rounded px-2 py-1"
+                          disabled={busy}
+                        >
+                          <option value="expense">Gasto</option>
+                          <option value="income">Ingreso</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2 mt-2 sm:mt-0">
+                        <button
+                          type="button"
+                          onClick={() => saveEdit(c)}
+                          disabled={busy || !editName.trim()}
+                          className="inline-flex items-center gap-1 rounded-full border border-emerald-500 px-4 py-1.5 text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 transition"
+                          title="Guardar"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 transition"
+                          title="Cancelar"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
+                        <span className={`inline-block w-2 h-2 rounded-full mt-1 sm:mt-0 ${c.type === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
+                        <span className="font-semibold text-gray-900 text-base truncate">{c.name}</span>
+                        <span className="text-xs text-gray-500 ml-0 sm:ml-2">Tipo: {c.type === "income" ? "Ingreso" : "Gasto"}</span>
+                      </div>
+                      <div className="flex gap-2 mt-2 sm:mt-0">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(c)}
+                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                          title="Editar"
+                          disabled={busy}
+                        >
+                          <Pencil size={15} />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteCategory(c)}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition"
+                          title="Borrar"
+                        >
+                          <Trash2 size={15} />
+                          Borrar
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
