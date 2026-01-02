@@ -18,6 +18,34 @@ export type MonthlySummary = {
     expense: number;
     balance: number;
   }>;
+  byCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    spent: number;
+    budget?: number;
+    percent?: number;
+    status?: string;
+  }>;
+  byAccount: Array<{
+    accountId: string;
+    accountName: string;
+    balance: number;
+    personName?: string;
+    type?: string;
+  }>;
+  recent: Array<{
+    _id: string;
+    date: string;
+    type: string;
+    amount: number;
+    categoryId?: string;
+    categoryName?: string;
+    personId?: string;
+    personName?: string;
+    accountId?: string;
+    accountName?: string;
+    note?: string;
+  }>;
 };
 
 function parseMonth(month: string): { year: number; monthIndex: number } {
@@ -125,6 +153,139 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
     }))
     .sort((a, b) => a.personName.localeCompare(b.personName));
 
+  // --- byCategory ---
+  // Obtener categorías expense
+  const categories = await db.collection("categories").find({ type: "expense" }).toArray();
+  type CategoryDoc = { _id: ObjectId; name: string };
+  const categoryMap = new Map((categories as CategoryDoc[]).map((c) => [c._id.toString(), c]));
+  // Gastos por categoría
+  const spendAgg = await db.collection("transactions").aggregate([
+    { $match: { deletedAt: { $exists: false }, type: "expense", date: { $gte: start, $lt: end } } },
+    { $group: { _id: "$categoryId", spent: { $sum: "$amount" } } },
+  ]).toArray();
+  // Presupuestos del mes
+  const budgets = await db.collection("budgets").find({ month }).toArray();
+  type BudgetDoc = { categoryId: ObjectId; amount: number };
+  const budgetMap = new Map((budgets as unknown as BudgetDoc[]).map((b) => [b.categoryId.toString(), b.amount]));
+  type SpendAggRow = { _id: ObjectId; spent: number };
+  const byCategory = (spendAgg as SpendAggRow[]).map((row) => {
+    const id = row._id?.toString();
+    const cat = categoryMap.get(id);
+    const budget = budgetMap.get(id) ?? 0;
+    const percent = budget > 0 ? (row.spent / budget) * 100 : 0;
+    let status = "none";
+    if (budget > 0) {
+      if (row.spent > budget) status = "over";
+      else if (percent >= 80) status = "warn";
+      else status = "ok";
+    }
+    return {
+      categoryId: id,
+      categoryName: cat?.name ?? "—",
+      spent: row.spent,
+      budget,
+      percent,
+      status,
+    };
+  });
+
+  // --- byAccount ---
+  const accounts = await db.collection("accounts").find({ active: true }).toArray();
+  type AccountDoc = { _id: ObjectId; name: string; person?: ObjectId; type?: string };
+  const accountMap = new Map((accounts as AccountDoc[]).map((a) => [a._id.toString(), a]));
+  // Mapeo de personas para cuentas
+  // Variable peopleDocsAccounts eliminada porque no se usa
+  // Variable peopleMapAccounts eliminada porque no se usa
+  const accountAgg = await db.collection("transactions").aggregate([
+    { $match: { date: { $gte: start, $lt: end } } },
+    { $group: { _id: "$accountId", balance: { $sum: "$amount" } } },
+  ]).toArray();
+  type AccountAggRow = { _id: ObjectId; balance: number };
+  // Buscar personas faltantes antes de mapear
+  // Variable missingPersonIds eliminada porque no se usa
+  // Variable validPersonIds eliminada porque no se usa
+  // Variables extraPeople y ExtraPersonDoc eliminadas porque no se usan
+  // extraPeopleMap ya no se usa
+
+  const byAccount: Array<{ accountId: string; accountName: string; balance: number; personName?: string; type?: string }> = [];
+  for (const row of accountAgg as AccountAggRow[]) {
+    const id = row._id?.toString();
+    const acc = accountMap.get(id);
+    let personName = "Sin asignar";
+    // Soportar ambos formatos: ObjectId o { _id, name }
+    if (acc?.person) {
+      let personId = null;
+      // Si es un ObjectId
+      if (typeof acc.person === "object" && typeof acc.person.toHexString === "function") {
+        personId = acc.person.toHexString();
+      }
+      // Si es un objeto con _id y name
+      else if (typeof acc.person === "object" && "_id" in acc.person && "name" in acc.person) {
+        personId = acc.person._id?.toString?.() ?? null;
+        if (typeof acc.person.name === "string" && acc.person.name.length > 0) {
+          personName = acc.person.name;
+        }
+      }
+      // Si es un string
+      else if (typeof acc.person === "string" && /^[a-fA-F0-9]{24}$/.test(acc.person)) {
+        personId = acc.person;
+      }
+      if (personName === "Sin asignar" && personId && /^[a-fA-F0-9]{24}$/.test(personId)) {
+        const personDoc = await db.collection("people").findOne({ _id: new ObjectId(personId) });
+        if (personDoc && typeof personDoc.name === "string" && personDoc.name.length > 0) {
+          personName = personDoc.name;
+        }
+      }
+    }
+    byAccount.push({
+      accountId: id,
+      accountName: acc?.name ?? "—",
+      balance: row.balance,
+      personName,
+      type: acc?.type ?? undefined,
+    });
+  }
+
+  // --- recent ---
+  const recentTx = await db.collection("transactions").find({ date: { $gte: start, $lt: end } }).sort({ date: -1 }).limit(10).toArray();
+  const peopleDocsRecent = await db.collection("people").find({ active: true }).toArray();
+  type PersonDoc = { _id: ObjectId; name: string };
+  const peopleMapRecent = new Map((peopleDocsRecent as PersonDoc[]).map((p) => [p._id.toString(), p]));
+  type TxDoc = {
+    _id: ObjectId;
+    date: Date;
+    type: string;
+    amount: number;
+    categoryId?: ObjectId;
+    personId?: ObjectId;
+    accountId?: ObjectId;
+    note?: string;
+  };
+  const recent = (recentTx as TxDoc[]).map((tx) => {
+    return {
+      _id: tx._id?.toString(),
+      date: tx.date?.toISOString?.() ?? String(tx.date),
+      type: tx.type,
+      amount: tx.amount,
+      categoryId: tx.categoryId?.toString(),
+      categoryName: (() => {
+        const cat = categoryMap.get(String(tx.categoryId));
+        return cat && typeof cat.name === "string" ? cat.name : "—";
+      })(),
+      personId: tx.personId?.toString(),
+      personName: (() => {
+        const p = peopleMapRecent.get(String(tx.personId));
+        return p && typeof p.name === "string" ? p.name : "—";
+      })(),
+      accountId: tx.accountId?.toString(),
+      accountName: (() => {
+        const acc = accountMap.get(String(tx.accountId));
+        return acc && typeof acc.name === "string" ? acc.name : "—";
+      })(),
+      note: tx.note,
+    };
+  });
+
   return {
     month,
     range: { start: start.toISOString(), end: end.toISOString() },
@@ -134,5 +295,8 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
       balance: income - expense,
     },
     byPerson,
+    byCategory,
+    byAccount,
+    recent,
   };
 }

@@ -1,9 +1,8 @@
-import { ArrowDownRight, ArrowUpRight, Users, Wallet, User } from "lucide-react";
+import { Landmark, Smartphone, CreditCard } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Wallet, User } from "lucide-react";
 import DashboardMonthPicker from "./DashboardMonthPicker";
 import { formatCurrencyARS } from "../lib/format";
 import { getMonthlySummary } from "../lib/summary";
-import { getMonthlyBudgets } from "../lib/budgets";
-import { getMonthlyPersonBudgets } from "../lib/personBudgets";
 import { Suspense } from "react";
 
 function currentMonthYYYYMM(): string {
@@ -22,18 +21,14 @@ export default async function Page({
   const month = sp.month ?? currentMonthYYYYMM();
   const summary = await getMonthlySummary(month);
 
-  const budgets = await getMonthlyBudgets(month);
-  const personBudgets = await getMonthlyPersonBudgets(month);
+  // const budgets = await getMonthlyBudgets(month);
+  // const personBudgets = await getMonthlyPersonBudgets(month);
 
   const totalIncome = summary.totals.income;
   const totalExpense = summary.totals.expense;
   const balance = summary.totals.balance;
 
-  const catOver = budgets.rows.filter((r) => r.status === "over").slice(0, 6);
-  const catWarn = budgets.rows.filter((r) => r.status === "warn").slice(0, 6);
-
-  const pOver = personBudgets.rows.filter((r) => r.status === "over").slice(0, 6);
-  const pWarn = personBudgets.rows.filter((r) => r.status === "warn").slice(0, 6);
+    // Variables de alertas eliminadas (no usadas)
 
   return (
     <div className="space-y-6">
@@ -126,54 +121,123 @@ export default async function Page({
         </div>
       </div>
 
+  {/* Top categorías con más gasto */}
   <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold">Alertas de presupuesto por categoría</div>
-            <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-              Configurá en /budgets
-            </div>
+    <div className="mb-3">
+      <div className="text-sm font-semibold">Top categorías de gasto</div>
+      <div className="mt-1 text-xs text-[rgb(var(--subtext))]">Las 3 categorías con más gasto este mes</div>
+    </div>
+    <div className="space-y-2">
+      {summary.byCategory
+        .sort((a, b) => b.spent - a.spent)
+        .slice(0, 3)
+        .map((c) => (
+          <div key={c.categoryId} className="flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white p-3">
+            <div className="font-semibold text-sm text-gray-800 truncate">{c.categoryName}</div>
+            <div className="text-sm font-semibold text-blue-700 tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
           </div>
-        </div>
+        ))}
+      {summary.byCategory.length === 0 && (
+        <div className="text-sm text-[rgb(var(--subtext))]">No hay gastos este mes.</div>
+      )}
+    </div>
+  </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <AlertBoxCategory title="Excedidos" rows={catOver} variant="over" />
-          <AlertBoxCategory title="Cerca del límite (≥ 80%)" rows={catWarn} variant="warn" />
-        </div>
-
-        {catOver.length === 0 && catWarn.length === 0 && (
-          <div className="mt-3 text-sm text-[rgb(var(--subtext))]">
-            No hay alertas por categoría este mes.
-          </div>
-        )}
-      </div>
-
+  {/* Top personas con más gasto */}
   <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex items-start gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-2xl bg-[rgba(var(--brand),0.10)] text-[rgb(var(--brand-dark))]">
-              <Users size={16} />
+    <div className="mb-3">
+      <div className="text-sm font-semibold">Top personas con más gasto</div>
+      <div className="mt-1 text-xs text-[rgb(var(--subtext))]">Las 3 personas que más gastaron este mes</div>
+    </div>
+    <div className="space-y-2">
+      {summary.byPerson
+        .sort((a, b) => b.expense - a.expense)
+        .slice(0, 3)
+        .map((p) => (
+          <div key={p.personId} className="flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white p-3">
+            <div className="flex items-center gap-2 font-semibold text-sm text-gray-800 truncate">
+              <span className="grid h-7 w-7 place-items-center rounded-xl bg-[rgba(var(--brand),0.10)] text-[rgb(var(--brand-dark))]">
+                <User size={16} />
+              </span>
+              {p.personName}
             </div>
-            <div>
-              <div className="text-sm font-semibold">Alertas de presupuesto por persona</div>
-              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-                Configurá en /person-budgets
+            <div className="text-sm font-semibold text-blue-700 tabular-nums">{formatCurrencyARS(-Math.abs(p.expense))}</div>
+          </div>
+        ))}
+      {summary.byPerson.length === 0 && (
+        <div className="text-sm text-[rgb(var(--subtext))]">No hay gastos este mes.</div>
+      )}
+    </div>
+  </div>
+
+  {/* Alertas de saldo bajo en cuentas */}
+  <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+    <div className="mb-3">
+  <div className="text-sm font-semibold">Alertas de saldo bajo en cuentas</div>
+  <div className="mt-1 text-xs text-[rgb(var(--subtext))]">Cuentas con saldo menor a $10.000</div>
+    </div>
+    <div className="space-y-2">
+      {summary.byAccount
+  .filter((a) => a.balance < 10000)
+        .map((a) => {
+          // Icono según tipo de cuenta
+          let icon = null;
+          let iconBg = "bg-slate-50 text-slate-700 border-slate-200";
+          if (a.type === "bank") {
+            icon = <Landmark size={16} />;
+            iconBg = "bg-sky-50 text-sky-700 border-sky-200";
+          } else if (a.type === "cash") {
+            icon = <Wallet size={16} />;
+            iconBg = "bg-slate-50 text-slate-700 border-slate-200";
+          } else if (a.type === "wallet") {
+            icon = <Smartphone size={16} />;
+            iconBg = "bg-emerald-50 text-emerald-700 border-emerald-200";
+          } else if (a.type === "credit") {
+            icon = <CreditCard size={16} />;
+            iconBg = "bg-violet-50 text-violet-700 border-violet-200";
+          }
+          return (
+            <div key={a.accountId} className="flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white p-3">
+              <div className="flex items-center gap-2 font-semibold text-sm text-gray-800 truncate">
+                <span className={`grid h-7 w-7 place-items-center rounded-xl ${iconBg}`}>{icon}</span>
+                {a.accountName}
+                {a.personName ? (
+                  <span className="ml-2 text-xs text-[rgb(var(--subtext))]">- {a.personName}</span>
+                ) : (
+                  <span className="ml-2 text-xs text-[rgb(var(--subtext))]">- Sin asignar</span>
+                )}
               </div>
+              <div className="text-sm font-semibold text-red-700 tabular-nums">{formatCurrencyARS(a.balance)}</div>
             </div>
-          </div>
-        </div>
+          );
+        })}
+      {summary.byAccount && summary.byAccount.filter((a) => a.balance < 5000).length === 0 && (
+        <div className="text-sm text-[rgb(var(--subtext))]">No hay cuentas con saldo bajo.</div>
+      )}
+    </div>
+  </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <AlertBoxPerson title="Excedidos" rows={pOver} variant="over" />
-          <AlertBoxPerson title="Cerca del límite (≥ 80%)" rows={pWarn} variant="warn" />
-        </div>
-
-        {pOver.length === 0 && pWarn.length === 0 && (
-          <div className="mt-3 text-sm text-[rgb(var(--subtext))]">
-            No hay alertas por persona este mes.
+  {/* Movimientos recientes */}
+  <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+    <div className="mb-3">
+      <div className="text-sm font-semibold">Movimientos recientes</div>
+      <div className="mt-1 text-xs text-[rgb(var(--subtext))]">Últimos 5 movimientos del mes</div>
+    </div>
+    <div className="space-y-2">
+      {summary.recent && summary.recent.slice(0, 5).map((m) => (
+        <div key={m._id} className="flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white p-3">
+          <div className="flex flex-col">
+            <div className="font-semibold text-sm text-gray-800 truncate">{m.categoryName} · {m.personName}</div>
+            <div className="text-xs text-[rgb(var(--subtext))]">{m.date}</div>
           </div>
-        )}
-      </div>
+          <div className={`text-sm font-semibold tabular-nums ${m.type === "income" ? "text-emerald-700" : "text-blue-700"}`}>{formatCurrencyARS(m.amount)}</div>
+        </div>
+      ))}
+      {(!summary.recent || summary.recent.length === 0) && (
+        <div className="text-sm text-[rgb(var(--subtext))]">No hay movimientos recientes.</div>
+      )}
+    </div>
+  </div>
     </div>
   );
 }
@@ -204,83 +268,5 @@ function KpiCard({
   );
 }
 
-function AlertBoxCategory({
-  title,
-  rows,
-  variant,
-}: {
-  title: string;
-  rows: Array<{ categoryName: string; budget: number; spent: number; percent: number }>;
-  variant: "over" | "warn";
-}) {
-  const cls = variant === "over" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50";
-
-  return (
-    <div className={`rounded-2xl border ${cls} p-3`}>
-      <div className="text-sm font-semibold">{title}</div>
-
-      {rows.length === 0 ? (
-        <div className="mt-2 text-xs text-[rgb(var(--subtext))]">Sin items.</div>
-      ) : (
-        <div className="mt-2 space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.categoryName}
-              className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold">{r.categoryName}</div>
-                <div className="text-xs font-semibold tabular-nums">{Math.round(r.percent)}%</div>
-              </div>
-              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-                Gastado: <span className="font-semibold">{formatCurrencyARS(-Math.abs(r.spent))}</span> ·
-                Presupuesto: <span className="font-semibold">{formatCurrencyARS(r.budget)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AlertBoxPerson({
-  title,
-  rows,
-  variant,
-}: {
-  title: string;
-  rows: Array<{ personName: string; budget: number; spent: number; percent: number }>;
-  variant: "over" | "warn";
-}) {
-  const cls = variant === "over" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50";
-
-  return (
-    <div className={`rounded-2xl border ${cls} p-3`}>
-      <div className="text-sm font-semibold">{title}</div>
-
-      {rows.length === 0 ? (
-        <div className="mt-2 text-xs text-[rgb(var(--subtext))]">Sin items.</div>
-      ) : (
-        <div className="mt-2 space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.personName}
-              className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold">{r.personName}</div>
-                <div className="text-xs font-semibold tabular-nums">{Math.round(r.percent)}%</div>
-              </div>
-              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-                Gastado: <span className="font-semibold">{formatCurrencyARS(-Math.abs(r.spent))}</span> ·
-                Tope: <span className="font-semibold">{formatCurrencyARS(r.budget)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// Componente AlertBoxCategory eliminado porque no se usa
 
