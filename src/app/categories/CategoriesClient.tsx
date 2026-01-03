@@ -79,9 +79,28 @@ export default function CategoriesClient({ initial }: Props) {
           <h2 className="text-xl font-bold text-gray-900 mb-1">Categorías</h2>
           <p className="text-gray-500 text-sm mb-6">Gestioná tus categorías de gastos e ingresos.</p>
           <form
-            onSubmit={e => {
+            onSubmit={async e => {
               e.preventDefault();
-              // Aquí podrías agregar la lógica para crear una categoría
+              if (!newName.trim()) return;
+              setBusy(true);
+              try {
+                const res = await fetch("/api/categories", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ name: newName, type: newType })
+                });
+                const json = await res.json().catch(() => null);
+                if (!res.ok || !json?.ok) {
+                  toast.push({ title: "Error al crear categoría", description: json?.error ?? "No se pudo crear.", variant: "error" });
+                  return;
+                }
+                setItems(prev => [...prev, { _id: json.category._id, name: json.category.name, type: json.category.type }]);
+                setNewName("");
+                setNewType("expense");
+                toast.push({ title: "Categoría creada", description: "La categoría fue creada correctamente.", variant: "ok" });
+              } finally {
+                setBusy(false);
+              }
             }}
             className="flex gap-3 items-center mb-6"
           >
