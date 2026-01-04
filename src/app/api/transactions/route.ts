@@ -46,30 +46,32 @@ function monthRangeUTC(month: string): { start: Date; end: Date } {
   return { start, end };
 }
 
-function currentMonthYYYYMM(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const month = url.searchParams.get("month") ?? currentMonthYYYYMM();
-    const { start, end } = monthRangeUTC(month);
-
+    const month = url.searchParams.get("month");
     const db = await getDb();
-
-    const txRaw = (await db
-      .collection("transactions")
-      .find({
-        deletedAt: { $exists: false },
-        date: { $gte: start, $lt: end },
-      })
-      .sort({ date: -1, createdAt: -1 })
-      .limit(200)
-      .toArray()) as unknown as TxDoc[];
+    let txRaw: TxDoc[] = [];
+    if (month && month.trim() !== "") {
+      const { start, end } = monthRangeUTC(month);
+      txRaw = (await db
+        .collection("transactions")
+        .find({
+          deletedAt: { $exists: false },
+          date: { $gte: start, $lt: end },
+        })
+        .sort({ date: -1, createdAt: -1 })
+        .limit(200)
+        .toArray()) as unknown as TxDoc[];
+    } else {
+      txRaw = (await db
+        .collection("transactions")
+        .find({ deletedAt: { $exists: false } })
+        .sort({ date: -1, createdAt: -1 })
+        .limit(200)
+        .toArray()) as unknown as TxDoc[];
+    }
 
     const personIds = Array.from(
       new Set(

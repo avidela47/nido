@@ -27,6 +27,12 @@ export default function PagosClient() {
     type: string;
   };
   const [pagos, setPagos] = useState<Pago[]>([]);
+  // DEBUG: Mostrar estructura real de los pagos en consola
+  useEffect(() => {
+    if (pagos && pagos.length > 0) {
+      console.log("PAGOS DATA", pagos);
+    }
+  }, [pagos]);
   const [filtroPersona, setFiltroPersona] = useState<string>("");
 
   useEffect(() => {
@@ -91,9 +97,30 @@ export default function PagosClient() {
   };
 
   // Filtro y total
-  const pagosFiltrados = useMemo(() =>
-    filtroPersona ? pagos.filter(p => p.person?.id === filtroPersona) : pagos
-  , [pagos, filtroPersona]);
+  const pagosFiltrados = useMemo(() => {
+    if (!filtroPersona) return pagos;
+    return pagos.filter(p => {
+      // Soportar todas las variantes posibles de persona y cuenta sin usar 'any'
+      let personId: string | undefined = undefined;
+      if (p.person && typeof p.person === "object") {
+        if ('id' in p.person && typeof p.person.id === 'string') personId = p.person.id;
+        else if ('_id' in p.person && typeof (p.person as { _id?: string })._id === 'string') personId = (p.person as { _id: string })._id;
+      } else if (typeof p.person === "string") {
+        personId = p.person;
+      }
+      let accountPersonId: string | undefined = undefined;
+      if (p.account && typeof p.account === "object" && 'person' in p.account && p.account.person) {
+        const accPerson = p.account.person;
+        if (accPerson && typeof accPerson === "object") {
+          if ('id' in accPerson && typeof accPerson.id === 'string') accountPersonId = accPerson.id;
+          else if ('_id' in accPerson && typeof (accPerson as { _id?: string })._id === 'string') accountPersonId = (accPerson as { _id: string })._id;
+        } else if (typeof accPerson === "string") {
+          accountPersonId = accPerson;
+        }
+      }
+      return personId === filtroPersona || accountPersonId === filtroPersona;
+    });
+  }, [pagos, filtroPersona]);
   const totalPagos = pagosFiltrados.reduce((acc, p) => acc + (typeof p.amount === "number" ? p.amount : Number(p.amount)), 0);
 
   return (
