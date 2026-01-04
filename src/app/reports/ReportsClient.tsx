@@ -106,9 +106,6 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
           </div>
         </div>
 
-        <div className="mt-3 text-xs text-[rgb(var(--subtext))] break-all">
-          Endpoint: <span className="font-mono">{url}</span>
-        </div>
       </div>
 
       {/* Totals */}
@@ -149,9 +146,13 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="income" />
-              <Bar dataKey="expense" />
+              <Tooltip formatter={(value, name) => {
+                if (name === "income") return [value, "Ingreso"];
+                if (name === "expense") return [value, "Gasto"];
+                return [value, name];
+              }} labelFormatter={label => label} />
+              <Bar dataKey="income" name="Ingreso" />
+              <Bar dataKey="expense" name="Gasto" />
             </BarChart>
           </ResponsiveContainer>
         </div>
