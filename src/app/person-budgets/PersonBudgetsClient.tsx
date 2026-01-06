@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PersonBudgetMonthly, PersonBudgetRow } from "../../lib/personBudgets";
 import { formatCurrencyARS } from "../../lib/format";
+import { MonthInput } from "../../components/ui/MonthInput";
 
 function badge(status: PersonBudgetRow["status"]) {
   if (status === "over") return "border-red-200 bg-red-50 text-red-700";
@@ -58,19 +59,15 @@ export default function PersonBudgetsClient({ initial }: { initial: PersonBudget
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-          <input
-            type="month"
-            value={month}
-            onChange={async (e) => {
-              const next = e.target.value;
-              setMonth(next);
-              await refresh(next);
-            }}
-            className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
-          />
-        </div>
+        <MonthInput
+          value={month}
+          onChange={async (e) => {
+            const next = e.target.value;
+            setMonth(next);
+            await refresh(next);
+          }}
+          className="w-full md:w-auto"
+        />
 
         <div className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-3">
           <div className="text-xs text-[rgb(var(--subtext))]">Total tope por personas</div>
@@ -92,8 +89,8 @@ export default function PersonBudgetsClient({ initial }: { initial: PersonBudget
           <PersonBudgetCard
             key={row.personId}
             row={row}
-            onSave={save}
             saving={savingId === row.personId}
+            onSave={save}
           />
         ))}
       </div>

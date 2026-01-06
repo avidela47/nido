@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MonthInput } from "../../components/ui/MonthInput";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useToast } from "../../components/ui/Toast";
 import { formatCurrencyARS } from "../../lib/format";
-
-type PersonRow = { _id: string; name: string };
+import { PersonRow, CategorySummaryRow } from "../../lib/types";
 
 type ReportData = {
   month: string;
   totals: { income: number; expense: number; balance: number };
   series: Array<{ day: string; income: number; expense: number; balance: number }>;
-  topCategories: Array<{ categoryId: string; categoryName: string; spent: number }>;
+  topCategories: CategorySummaryRow[];
 };
 
 function currentMonthYYYYMM(): string {
@@ -79,15 +79,11 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
       <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="text-sm font-semibold">Filtros</div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
-            />
-          </div>
+          <MonthInput
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="mt-1 w-full"
+          />
 
           <div>
             <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Persona (opcional)</div>
@@ -172,9 +168,9 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
             topCategories.map((c) => (
               <div
                 key={c.categoryId}
-                className="flex items-center justify-between rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2"
+                className="group flex items-center justify-between rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 hover:bg-[rgb(var(--muted))] transition"
               >
-                <div className="text-sm font-semibold">{c.categoryName}</div>
+                <div className="truncate text-sm font-semibold group-hover:underline">{c.categoryName}</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
               </div>
             ))

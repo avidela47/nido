@@ -1,8 +1,7 @@
 import { SectionCard } from "../../components/ui/SectionCard";
 import ReportsClient from "./ReportsClient";
 import { getDb } from "../../lib/mongodb";
-
-type PersonRow = { _id: string; name: string };
+import { PersonRow } from "../../lib/types";
 
 export default async function ReportsPage() {
   const db = await getDb();

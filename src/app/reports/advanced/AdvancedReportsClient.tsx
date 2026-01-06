@@ -5,12 +5,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Download, Moon, Sun, Sparkles, Info } from "lucide-react";
+import { MonthInput } from "../../../components/ui/MonthInput";
 import { useToast } from "../../../components/ui/Toast";
 import { formatCurrencyARS } from "../../../lib/format";
 import { currentMonthYYYYMM, currentYearYYYY, monthAdd } from "../../../lib/dateRanges";
-
-type PersonRow = { _id: string; name: string };
-type CategoryRow = { _id: string; name: string };
+import { PersonRow, CategoryRow } from "../../../lib/types";
 
 type ComparePayload = {
   monthA: { month: string; totals: { income: number; expense: number; balance: number }; topCategories: Array<{ categoryId: string; categoryName: string; spent: number }> };
@@ -289,8 +288,8 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
           <div className="flex flex-col gap-2 md:flex-row">
             <div>
               <div className={`text-xs font-semibold ${sub}`}>Mes A</div>
-              <input
-                type="month"
+              <MonthInput
+                label="Mes A"
                 value={monthA}
                 onChange={(e) => setMonthA(e.target.value)}
                 className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
@@ -298,8 +297,8 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
             </div>
             <div>
               <div className={`text-xs font-semibold ${sub}`}>Mes B</div>
-              <input
-                type="month"
+              <MonthInput
+                label="Mes B"
                 value={monthB}
                 onChange={(e) => setMonthB(e.target.value)}
                 className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
@@ -339,8 +338,15 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
             <div className="mt-3 text-xs font-semibold">Top gastos</div>
             <div className="mt-2 space-y-2">
               {(compare?.monthA.topCategories ?? []).slice(0, 6).map((c) => (
-                <div key={c.categoryId} className={dark ? "flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2" : "flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2"}>
-                  <div className="text-sm font-semibold">{c.categoryName}</div>
+                <div
+                  key={c.categoryId}
+                  className={
+                    dark
+                      ? "group flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 hover:bg-slate-900 transition"
+                      : "group flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 hover:bg-[rgb(var(--muted))] transition"
+                  }
+                >
+                  <div className="truncate text-sm font-semibold group-hover:underline">{c.categoryName}</div>
                   <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
                 </div>
               ))}
@@ -370,8 +376,15 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
             <div className="mt-3 text-xs font-semibold">Top gastos</div>
             <div className="mt-2 space-y-2">
               {(compare?.monthB.topCategories ?? []).slice(0, 6).map((c) => (
-                <div key={c.categoryId} className={dark ? "flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2" : "flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2"}>
-                  <div className="text-sm font-semibold">{c.categoryName}</div>
+                <div
+                  key={c.categoryId}
+                  className={
+                    dark
+                      ? "group flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 hover:bg-slate-900 transition"
+                      : "group flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 hover:bg-[rgb(var(--muted))] transition"
+                  }
+                >
+                  <div className="truncate text-sm font-semibold group-hover:underline">{c.categoryName}</div>
                   <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
                 </div>
               ))}
@@ -437,8 +450,8 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
 
             <div>
               <div className={`text-xs font-semibold ${sub}`}>Desde</div>
-              <input
-                type="month"
+              <MonthInput
+                label="Desde"
                 value={trendStartMonth}
                 onChange={(e) => setTrendStartMonth(e.target.value)}
                 className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}

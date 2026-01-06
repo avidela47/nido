@@ -4,10 +4,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { MonthInput } from "../../components/ui/MonthInput";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "../../components/ui/Toast";
-
-type PersonRow = { _id: string; name: string };
+import { PersonRow } from "../../lib/types";
 
 type AccountRow = {
   _id: string;
@@ -328,15 +328,10 @@ export default function TransactionsClient({ month, items, q }: { month: string;
       </a>
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-wrap gap-2 md:items-center">
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-            <input
-              type="month"
-              value={monthValue}
-              onChange={(e) => setMonth(e.target.value)}
-              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
-            />
-          </div>
+          <MonthInput
+            value={monthValue}
+            onChange={(e) => setMonth(e.target.value)}
+          />
 
           <div className="flex items-center gap-2">
             <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Persona</div>

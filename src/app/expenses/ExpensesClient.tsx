@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Pencil, X, Save } from "lucide-react";
+import { MonthInput } from "../../components/ui/MonthInput";
 import { formatCurrencyARS } from "../../lib/format";
 import InlineLoader from "../../components/ui/InlineLoader";
 import EmptyState from "../../components/ui/EmptyState";
@@ -265,15 +266,17 @@ export default function ExpensesClient({
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">
                       {it.category?.name ?? "—"} · {it.person?.name ?? "—"}
-                    </div>
-                    <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-                      {it.date}
-                      {it.note ? ` · ${it.note}` : ""}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm font-semibold tabular-nums">
+                        <MonthInput
+                          value={monthValue}
+                          onChange={(e) => setMonth(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={load}
+                          className="rounded-2xl bg-linear-to-r from-[rgb(var(--brand))] to-[rgb(var(--brand-2))] px-4 py-2 text-sm font-semibold text-white"
+                        >
+                          Buscar
+                        </button>
                       {formatCurrencyARS(-Math.abs(it.amount))}
                     </div>
 

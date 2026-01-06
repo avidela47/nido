@@ -2,27 +2,15 @@ import { SectionCard } from "../../components/ui/SectionCard";
 import BudgetsClient from "./BudgetsClient";
 import { getDb } from "../../lib/mongodb";
 import { currentMonthYYYYMM } from "../../lib/budgets";
+import { parseMonthRangeUTC } from "../../lib/dateRanges";
 import { ObjectId } from "mongodb";
 import { Suspense } from "react";
 
 type CategoryRow = { _id: string; name: string };
-type BudgetRow = { _id: string; categoryId: string; amount: number };
 type SpentRow = { categoryId: string; spent: number };
 
-function parseMonth(month: string): { start: Date; end: Date } {
-  const m = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!m) return { start: new Date(Date.UTC(1970, 0, 1)), end: new Date(Date.UTC(1970, 0, 2)) };
-
-  const year = Number(m[1]);
-  const mm = Number(m[2]);
-  if (!Number.isFinite(year) || !Number.isFinite(mm) || mm < 1 || mm > 12) {
-    return { start: new Date(Date.UTC(1970, 0, 1)), end: new Date(Date.UTC(1970, 0, 2)) };
-  }
-
-  const start = new Date(Date.UTC(year, mm - 1, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, mm, 1, 0, 0, 0, 0));
-  return { start, end };
-}
+// Usa helper compartido para obtener el rango UTC del mes (YYYY-MM)
+const parseMonth = parseMonthRangeUTC;
 
 export default async function BudgetsPage({
   searchParams,
@@ -47,18 +35,7 @@ export default async function BudgetsPage({
     name: String(c.name ?? "—"),
   }));
 
-  // 2) Presupuestos del mes
-  const budgetsRaw = await db.collection("budgets").find({ month }).toArray();
-
-  const budgets: BudgetRow[] = budgetsRaw
-    .map((b) => ({
-      _id: b._id?.toString?.() ? String(b._id.toString()) : "",
-      categoryId: b.categoryId?.toString?.() ? String(b.categoryId.toString()) : "",
-      amount: Number(b.amount) || 0,
-    }))
-    .filter((b) => b._id && b.categoryId);
-
-  // 3) Gastado por categoría (transactions)
+  // 2) Gastado por categoría (transactions)
   const spentAgg = (await db
     .collection("transactions")
     .aggregate([
@@ -91,7 +68,7 @@ export default async function BudgetsPage({
       subtitle="Definí presupuesto por categoría y mes. Semáforo automático según consumo."
     >
       <Suspense>
-        <BudgetsClient month={month} categories={categories} budgets={budgets} spentByCategory={spentByCategory} />
+        <BudgetsClient month={month} categories={categories} spentByCategory={spentByCategory} />
       </Suspense>
     </SectionCard>
   );

@@ -1,34 +1,16 @@
-import { Landmark, Smartphone, CreditCard } from "lucide-react";
-import { ArrowDownRight, ArrowUpRight, Wallet, User } from "lucide-react";
+
+import { Landmark, Smartphone, CreditCard, User } from "lucide-react";
 import DashboardMonthPicker from "./DashboardMonthPicker";
-import { formatCurrencyARS } from "../lib/format";
 import { getMonthlySummary } from "../lib/summary";
+import { formatCurrencyARS } from "../lib/format";
+import { currentMonthYYYYMM } from "../lib/dateRanges";
 import { Suspense } from "react";
-
-function currentMonthYYYYMM(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
-
-export default async function Page({
-  searchParams,
-}: {
-  searchParams?: Promise<{ month?: string }>;
-}) {
-  const sp = (await searchParams) ?? {};
+import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { KpiCard } from "../components/ui/KpiCard";
+export default async function Page({ searchParams }: { searchParams?: { month?: string } }) {
+  const sp = searchParams ?? {};
   const month = sp.month ?? currentMonthYYYYMM();
   const summary = await getMonthlySummary(month);
-
-  // const budgets = await getMonthlyBudgets(month);
-  // const personBudgets = await getMonthlyPersonBudgets(month);
-
-  const totalIncome = summary.totals.income;
-  const totalExpense = summary.totals.expense;
-  const balance = summary.totals.balance;
-
-    // Variables de alertas eliminadas (no usadas)
 
   return (
     <div className="space-y-6">
@@ -46,20 +28,20 @@ export default async function Page({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           title="Ingresos (Mes)"
-          value={formatCurrencyARS(totalIncome)}
+          value={formatCurrencyARS(summary.totals.income)}
           icon={<ArrowUpRight size={18} />}
           positive
         />
         <KpiCard
           title="Gastos (Mes)"
-          value={formatCurrencyARS(-Math.abs(totalExpense))}
+          value={formatCurrencyARS(-Math.abs(summary.totals.expense))}
           icon={<ArrowDownRight size={18} />}
         />
         <KpiCard
           title="Balance (Mes)"
-          value={formatCurrencyARS(balance)}
+          value={formatCurrencyARS(summary.totals.balance)}
           icon={<Wallet size={18} />}
-          positive={balance >= 0}
+          positive={summary.totals.balance >= 0}
         />
       </div>
 
@@ -242,31 +224,6 @@ export default async function Page({
   );
 }
 
-function KpiCard({
-  title,
-  value,
-  icon,
-  positive,
-}: {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  positive?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold">{title}</div>
-        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[rgba(var(--brand),0.10)] text-[rgb(var(--brand-dark))]">
-          {icon}
-        </div>
-      </div>
-      <div className={`mt-3 text-2xl font-semibold tabular-nums ${positive ? "text-emerald-600" : ""}`}>
-        {value}
-      </div>
-    </div>
-  );
-}
 
 // Componente AlertBoxCategory eliminado porque no se usa
 

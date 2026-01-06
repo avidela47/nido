@@ -1,25 +1,15 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "../../../lib/mongodb";
+import { isMonthYYYYMM, parseMonthRangeUTC } from "../../../lib/dateRanges";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return "Error desconocido";
 }
 
-function isMonthYYYYMM(v: unknown): v is string {
-  return typeof v === "string" && /^\d{4}-\d{2}$/.test(v);
-}
-
-function parseMonthRange(month: string): { start: Date; end: Date } {
-  const m = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!m) return { start: new Date(Date.UTC(1970, 0, 1)), end: new Date(Date.UTC(1970, 0, 2)) };
-  const y = Number(m[1]);
-  const mm = Number(m[2]);
-  const start = new Date(Date.UTC(y, mm - 1, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(y, mm, 1, 0, 0, 0, 0));
-  return { start, end };
-}
+// Validación y rango de mes centralizados en lib/dateRanges
+const parseMonthRange = parseMonthRangeUTC;
 
 export async function GET(req: Request) {
   try {

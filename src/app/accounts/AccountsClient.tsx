@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "../../components/ui/Toast";
+import { MonthInput } from "../../components/ui/MonthInput";
 import { Plus, Pencil, Save, Trash2, X, CreditCard, Wallet, Landmark, Smartphone } from "lucide-react";
 
 type SummaryItem = {
@@ -302,15 +303,10 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-            <input
-              type="month"
+            <MonthInput
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
             />
-          </div>
         </div>
 
         {summaryError ? (

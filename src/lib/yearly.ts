@@ -1,7 +1,6 @@
 import { getDb } from "./mongodb";
 import { ObjectId } from "mongodb";
-
-type TxType = "income" | "expense";
+import { TxType, PersonSummaryRow } from "./types";
 
 export type YearlySummary = {
   year: number;
@@ -12,13 +11,7 @@ export type YearlySummary = {
     expense: number;
     balance: number;
   }>;
-  byPerson: Array<{
-    personId: string;
-    personName: string;
-    income: number;
-    expense: number;
-    balance: number;
-  }>;
+  byPerson: PersonSummaryRow[];
 };
 
 function yearRangeUTC(year: number): { start: Date; end: Date } {

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
+import { YearInput } from "../../components/ui/YearInput";
+import { MonthInput } from "../../components/ui/MonthInput";
 import { useToast } from "../../components/ui/Toast";
 
 type PersonRow = { _id: string; name: string };
@@ -90,23 +92,18 @@ export default function ExportClient({ people }: { people: PersonRow[] }) {
 
           {scope === "month" ? (
             <div className="md:col-span-2">
-              <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-              <input
-                type="month"
+              <MonthInput
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
+                className="mt-1 w-full"
               />
             </div>
           ) : (
             <div className="md:col-span-2">
-              <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Año</div>
-              <input
+              <YearInput
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                inputMode="numeric"
-                placeholder="2025"
-                className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
+                className="mt-1 w-full"
               />
             </div>
           )}

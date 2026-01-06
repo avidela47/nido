@@ -130,31 +130,33 @@ export default function CategoriesClient({ initial }: Props) {
           {items.length === 0 ? (
             <div className="text-center text-gray-400 py-8">No hay categorías.</div>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <div className="space-y-2">
               {items.map((c) => (
-                <li key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-3 shadow-sm">
+                <div
+                  key={c._id}
+                  className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
+                >
                   {editingId === c._id ? (
                     <>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
-                        <span className={`inline-block w-2 h-2 rounded-full mt-1 sm:mt-0 ${editType === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <input
                           type="text"
                           value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          className="font-semibold text-gray-900 text-base truncate border rounded px-2 py-1 mr-2"
+                          className="flex-1 text-sm font-semibold text-gray-900 truncate border border-[rgb(var(--border))] rounded-full px-3 py-1"
                           disabled={busy}
                         />
                         <select
                           value={editType}
                           onChange={e => setEditType(e.target.value as Category["type"])}
-                          className="text-xs border rounded px-2 py-1"
+                          className="text-xs border border-[rgb(var(--border))] rounded-full px-2 py-1 bg-white"
                           disabled={busy}
                         >
                           <option value="expense">Gasto</option>
                           <option value="income">Ingreso</option>
                         </select>
                       </div>
-                      <div className="flex gap-2 mt-2 sm:mt-0">
+                      <div className="flex gap-2 mt-2 md:mt-0">
                         <button
                           type="button"
                           onClick={() => saveEdit(c)}
@@ -177,20 +179,19 @@ export default function CategoriesClient({ initial }: Props) {
                     </>
                   ) : (
                     <>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
-                        <span className={`inline-block w-2 h-2 rounded-full mt-1 sm:mt-0 ${c.type === "income" ? "bg-emerald-400" : "bg-blue-400"}`}></span>
-                        <span className="font-semibold text-gray-900 text-base truncate">{c.name}</span>
-                        <span className="text-xs text-gray-500 ml-0 sm:ml-2">Tipo: {c.type === "income" ? "Ingreso" : "Gasto"}</span>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-gray-900">{c.name}</div>
+                        <div className="text-xs text-gray-500">Tipo: {c.type === "income" ? "Ingreso" : "Gasto"}</div>
                       </div>
-                      <div className="flex gap-2 mt-2 sm:mt-0">
+                      <div className="flex gap-2 mt-2 md:mt-0">
                         <button
                           type="button"
                           onClick={() => startEdit(c)}
-                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                          className="inline-flex items-center gap-1 rounded-full border border-[rgb(var(--border))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--subtext))] bg-white hover:bg-[rgb(var(--muted))] transition"
                           title="Editar"
                           disabled={busy}
                         >
-                          <Pencil size={15} />
+                          <Pencil size={15} className="text-[rgb(var(--subtext))]" />
                           Editar
                         </button>
                         <button
@@ -206,9 +207,9 @@ export default function CategoriesClient({ initial }: Props) {
                       </div>
                     </>
                   )}
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </div>

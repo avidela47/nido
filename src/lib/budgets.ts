@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "./mongodb";
+import { parseMonthRangeUTC } from "./dateRanges";
 
 type TxType = "income" | "expense";
 
@@ -28,23 +29,8 @@ type CategoryDoc = { _id: ObjectId; name?: unknown; type?: unknown };
 type BudgetDoc = { _id: ObjectId; month?: unknown; categoryId?: unknown; amount?: unknown };
 type SpendAggRow = { _id: ObjectId; spent: number };
 
-function parseMonth(month: string): { year: number; monthIndex: number } {
-  const m = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!m) throw new Error("month inválido. Formato esperado: YYYY-MM");
-  const year = Number(m[1]);
-  const mm = Number(m[2]);
-  if (!Number.isFinite(year) || !Number.isFinite(mm) || mm < 1 || mm > 12) {
-    throw new Error("month inválido. Rango esperado: 01..12");
-  }
-  return { year, monthIndex: mm - 1 };
-}
-
-function monthRangeUTC(month: string): { start: Date; end: Date } {
-  const { year, monthIndex } = parseMonth(month);
-  const start = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, monthIndex + 1, 1, 0, 0, 0, 0));
-  return { start, end };
-}
+// Rango de mes centralizado en lib/dateRanges (YYYY-MM → start/end UTC)
+const monthRangeUTC = parseMonthRangeUTC;
 
 export function currentMonthYYYYMM(): string {
   const d = new Date();

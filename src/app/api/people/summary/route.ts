@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "../../../../lib/mongodb";
 import { currentMonthYYYYMM, parseMonthRangeUTC, isMonthYYYYMM } from "../../../../lib/dateRanges";
+import { TxType } from "../../../../lib/types";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return "Error desconocido";
 }
 
-type TxType = "income" | "expense";
 
 function prevMonthYYYYMM(month: string): string {
   const [y, m] = month.split("-").map((x) => Number(x));

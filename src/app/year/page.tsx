@@ -1,4 +1,5 @@
 import { SectionCard } from "../../components/ui/SectionCard";
+import { KpiCard } from "../../components/ui/KpiCard";
 import { getYearlySummary } from "../../lib/yearly";
 import { formatCurrencyARS } from "../../lib/format";
 import YearPicker from "./yearPicker";
@@ -29,9 +30,9 @@ export default async function YearPage({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Kpi title="Ingresos (Año)" value={formatCurrencyARS(summary.totals.income)} positive />
-          <Kpi title="Gastos (Año)" value={formatCurrencyARS(-Math.abs(summary.totals.expense))} />
-          <Kpi
+          <KpiCard title="Ingresos (Año)" value={formatCurrencyARS(summary.totals.income)} positive />
+          <KpiCard title="Gastos (Año)" value={formatCurrencyARS(-Math.abs(summary.totals.expense))} />
+          <KpiCard
             title="Balance (Año)"
             value={formatCurrencyARS(summary.totals.balance)}
             positive={summary.totals.balance >= 0}
@@ -87,15 +88,6 @@ export default async function YearPage({
         </div>
       </div>
     </SectionCard>
-  );
-}
-
-function Kpi({ title, value, positive }: { title: string; value: string; positive?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
-      <div className="text-sm font-semibold">{title}</div>
-      <div className={`mt-3 text-2xl font-semibold tabular-nums ${positive ? "text-emerald-600" : ""}`}>{value}</div>
-    </div>
   );
 }
 

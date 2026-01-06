@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X, ArrowDownCircle, ArrowUpCircle, CalendarDays, WalletCards } from "lucide-react";
 import { currentMonthYYYYMM, parseMonthRangeUTC } from "../../lib/dateRanges";
 import { formatCurrencyARS } from "../../lib/format";
+import { MonthInput } from "../../components/ui/MonthInput";
 
 type TxType = "income" | "expense";
 
@@ -371,11 +372,10 @@ export default function PersonSummaryModal({
               <div className="mt-1 text-xs text-[rgb(var(--subtext))]">{monthLabel}</div>
             </div>
 
-            <input
-              type="month"
+            <MonthInput
+              label={undefined}
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
             />
           </div>
 

@@ -1,12 +1,6 @@
 import { SectionCard } from "../../components/ui/SectionCard";
 import TransfersClient from "./TransfersClient";
-
-function currentMonthYYYYMM(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
+import { currentMonthYYYYMM } from "../../lib/dateRanges";
 
 type TransferItem = {
   _id: string;

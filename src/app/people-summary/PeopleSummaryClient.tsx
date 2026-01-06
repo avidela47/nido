@@ -3,21 +3,15 @@
 import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatCurrencyARS } from "../../lib/format";
-
-type Row = {
-  personId: string;
-  name: string;
-  income: number;
-  expense: number;
-  balance: number;
-};
+import { MonthInput } from "../../components/ui/MonthInput";
+import { PersonSummaryRow } from "../../lib/types";
 
 function pct(n: number): string {
   if (!Number.isFinite(n)) return "0%";
   return `${Math.round(n)}%`;
 }
 
-export default function PeopleSummaryClient({ month, rows }: { month: string; rows: Row[] }) {
+export default function PeopleSummaryClient({ month, rows }: { month: string; rows: PersonSummaryRow[] }) {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -51,15 +45,11 @@ export default function PeopleSummaryClient({ month, rows }: { month: string; ro
     <div className="space-y-4">
       {/* Controls + totals */}
       <div className="flex flex-col gap-3 rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)] md:flex-row md:items-end md:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
-          />
-        </div>
+        <MonthInput
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="w-full md:w-auto"
+        />
 
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] px-3 py-2">
@@ -109,7 +99,7 @@ export default function PeopleSummaryClient({ month, rows }: { month: string; ro
                         <div className="rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--muted))] px-2 py-0.5 text-xs font-semibold">
                           #{r.rank}
                         </div>
-                        <div className="truncate text-sm font-semibold">{r.name}</div>
+                        <div className="truncate text-sm font-semibold">{r.personName}</div>
                       </div>
 
                       <div className="mt-1 text-xs text-[rgb(var(--subtext))]">

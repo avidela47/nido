@@ -1,26 +1,14 @@
 import { SectionCard } from "../../components/ui/SectionCard";
 import PeopleSummaryClient from "./PeopleSummaryClient";
 import { getDb } from "../../lib/mongodb";
+import { parseMonthRangeUTC } from "../../lib/dateRanges";
 import { currentMonthYYYYMM } from "../../lib/budgets";
 import { ObjectId } from "mongodb";
 import { Suspense } from "react";
+import { PersonRow, PersonSummaryRow } from "../../lib/types";
 
-type PersonRow = { _id: string; name: string };
-
-function parseMonth(month: string): { start: Date; end: Date } {
-  const m = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!m) return { start: new Date(Date.UTC(1970, 0, 1)), end: new Date(Date.UTC(1970, 0, 2)) };
-
-  const year = Number(m[1]);
-  const mm = Number(m[2]);
-  if (!Number.isFinite(year) || !Number.isFinite(mm) || mm < 1 || mm > 12) {
-    return { start: new Date(Date.UTC(1970, 0, 1)), end: new Date(Date.UTC(1970, 0, 2)) };
-  }
-
-  const start = new Date(Date.UTC(year, mm - 1, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, mm, 1, 0, 0, 0, 0));
-  return { start, end };
-}
+// Usa helper compartido para obtener el rango UTC del mes (YYYY-MM)
+const parseMonth = parseMonthRangeUTC;
 
 type AggRow = {
   _id: { personId: ObjectId; type: "income" | "expense" };
@@ -74,9 +62,15 @@ export default async function PeopleSummaryPage({
     map.set(pid, obj);
   }
 
-  const rows = people.map((p) => {
+  const rows: PersonSummaryRow[] = people.map((p) => {
     const v = map.get(p._id) ?? { income: 0, expense: 0 };
-    return { personId: p._id, name: p.name, income: v.income, expense: v.expense, balance: v.income - v.expense };
+    return {
+      personId: p._id,
+      personName: p.name,
+      income: v.income,
+      expense: v.expense,
+      balance: v.income - v.expense,
+    };
   });
 
   return (

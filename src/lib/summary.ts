@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "./mongodb";
-
-type TxType = "income" | "expense";
+import { parseMonthRangeUTC } from "./dateRanges";
+import { TxType, PersonSummaryRow, CategorySummaryRow } from "./types";
 
 export type MonthlySummary = {
   month: string; // YYYY-MM
@@ -11,21 +11,8 @@ export type MonthlySummary = {
     expense: number;
     balance: number;
   };
-  byPerson: Array<{
-    personId: string;
-    personName: string;
-    income: number;
-    expense: number;
-    balance: number;
-  }>;
-  byCategory: Array<{
-    categoryId: string;
-    categoryName: string;
-    spent: number;
-    budget?: number;
-    percent?: number;
-    status?: string;
-  }>;
+  byPerson: PersonSummaryRow[];
+  byCategory: CategorySummaryRow[];
   byAccount: Array<{
     accountId: string;
     accountName: string;
@@ -48,26 +35,8 @@ export type MonthlySummary = {
   }>;
 };
 
-function parseMonth(month: string): { year: number; monthIndex: number } {
-  // month: YYYY-MM
-  const m = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!m) throw new Error("month inválido. Formato esperado: YYYY-MM");
-
-  const year = Number(m[1]);
-  const mm = Number(m[2]);
-  if (!Number.isFinite(year) || !Number.isFinite(mm) || mm < 1 || mm > 12) {
-    throw new Error("month inválido. Rango esperado: 01..12");
-  }
-
-  return { year, monthIndex: mm - 1 };
-}
-
-function monthRangeUTC(month: string): { start: Date; end: Date } {
-  const { year, monthIndex } = parseMonth(month);
-  const start = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, monthIndex + 1, 1, 0, 0, 0, 0));
-  return { start, end };
-}
+// Rango de mes centralizado en lib/dateRanges (YYYY-MM → start/end UTC)
+const monthRangeUTC = parseMonthRangeUTC;
 
 type TxAggRow = {
   _id: { personId: ObjectId; type: TxType };
@@ -87,7 +56,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   const totalsAgg = (await db
     .collection("transactions")
     .aggregate([
-      { $match: { date: { $gte: start, $lt: end } } },
+      { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
       { $group: { _id: "$type", total: { $sum: "$amount" } } },
     ])
     .toArray()) as unknown as TotalsAggRow[];
@@ -99,7 +68,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   const byPersonAgg = (await db
     .collection("transactions")
     .aggregate([
-      { $match: { date: { $gte: start, $lt: end } } },
+      { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
       {
         $group: {
           _id: { personId: "$personId", type: "$type" },
@@ -197,7 +166,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   // Variable peopleDocsAccounts eliminada porque no se usa
   // Variable peopleMapAccounts eliminada porque no se usa
   const accountAgg = await db.collection("transactions").aggregate([
-    { $match: { date: { $gte: start, $lt: end } } },
+    { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
     { $group: { _id: "$accountId", balance: { $sum: "$amount" } } },
   ]).toArray();
   type AccountAggRow = { _id: ObjectId; balance: number };
@@ -247,7 +216,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   }
 
   // --- recent ---
-  const recentTx = await db.collection("transactions").find({ date: { $gte: start, $lt: end } }).sort({ date: -1 }).limit(10).toArray();
+  const recentTx = await db.collection("transactions").find({ deletedAt: { $exists: false }, date: { $gte: start, $lt: end } }).sort({ date: -1 }).limit(10).toArray();
   const peopleDocsRecent = await db.collection("people").find({ active: true }).toArray();
   type PersonDoc = { _id: ObjectId; name: string };
   const peopleMapRecent = new Map((peopleDocsRecent as PersonDoc[]).map((p) => [p._id.toString(), p]));

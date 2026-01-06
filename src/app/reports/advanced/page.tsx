@@ -1,9 +1,7 @@
 import { SectionCard } from "../../../components/ui/SectionCard";
 import AdvancedReportsClient from "./AdvancedReportsClient";
 import { getDb } from "../../../lib/mongodb";
-
-type PersonRow = { _id: string; name: string };
-type CategoryRow = { _id: string; name: string };
+import { PersonRow, CategoryRow } from "../../../lib/types";
 
 export default async function AdvancedReportsPage() {
   const db = await getDb();

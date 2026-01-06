@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "../../../lib/mongodb";
 import { toCSV } from "../../../lib/csv";
+import { isMonthYYYYMM, parseMonthRangeUTC } from "../../../lib/dateRanges";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -12,23 +13,12 @@ function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
 }
 
-function isMonthYYYYMM(v: unknown): v is string {
-  return typeof v === "string" && /^\d{4}-\d{2}$/.test(v);
-}
-
 function isYearYYYY(v: unknown): v is string {
   return typeof v === "string" && /^\d{4}$/.test(v);
 }
 
-function parseMonthRange(month: string): { start: Date; end: Date } {
-  const m = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!m) return { start: new Date(Date.UTC(1970, 0, 1)), end: new Date(Date.UTC(1970, 0, 2)) };
-  const y = Number(m[1]);
-  const mm = Number(m[2]);
-  const start = new Date(Date.UTC(y, mm - 1, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(y, mm, 1, 0, 0, 0, 0));
-  return { start, end };
-}
+// Rango de mes reutilizado desde lib/dateRanges (YYYY-MM → start/end UTC)
+const parseMonthRange = parseMonthRangeUTC;
 
 function parseYearRange(year: string): { start: Date; end: Date } {
   const y = Number(year);

@@ -4,6 +4,7 @@
 import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatCurrencyARS } from "../../lib/format";
+import { MonthInput } from "../../components/ui/MonthInput";
 
 type CategoryRow = { _id: string; name: string };
 type SpentRow = { categoryId: string; spent: number };
@@ -41,19 +42,15 @@ export default function BudgetsClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)] md:flex-row md:items-end md:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
-          <input
-            type="month"
-            value={month}
-            onChange={e => {
-              const sp = new URLSearchParams(params.toString());
-              sp.set("month", e.target.value);
-              router.push(`/budgets?${sp.toString()}`);
-            }}
-            className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
-          />
-        </div>
+        <MonthInput
+          value={month}
+          onChange={e => {
+            const sp = new URLSearchParams(params.toString());
+            sp.set("month", e.target.value);
+            router.push(`/budgets?${sp.toString()}`);
+          }}
+          className="w-full md:w-auto"
+        />
         <div className="grid grid-cols-1 gap-2 text-sm">
           <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] px-3 py-2">
             <div className="text-xs text-[rgb(var(--subtext))]">Total gastado</div>
@@ -73,7 +70,10 @@ export default function BudgetsClient({
         ) : (
           <div className="space-y-2">
             {initialRows.map((r) => (
-              <div key={r.categoryId} className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between">
+              <div
+                key={r.categoryId}
+                className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
+              >
                 <div className="truncate text-sm font-semibold">{r.categoryName}</div>
                 <div className="mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0">
                   Gastado: <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(r.spent))}</span>
