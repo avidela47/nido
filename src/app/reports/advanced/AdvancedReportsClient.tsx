@@ -342,12 +342,14 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                   key={c.categoryId}
                   className={
                     dark
-                      ? "group flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 hover:bg-slate-900 transition"
-                      : "group flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 hover:bg-[rgb(var(--muted))] transition"
+                      ? "rounded-2xl border border-slate-800 bg-slate-950 p-3 flex flex-col md:flex-row md:items-center md:justify-between"
+                      : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
                   }
                 >
-                  <div className="truncate text-sm font-semibold group-hover:underline">{c.categoryName}</div>
-                  <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
+                  <div className={dark ? "truncate text-sm font-semibold" : "truncate text-sm font-semibold text-[rgb(var(--text))]"}>{c.categoryName}</div>
+                  <div className={dark ? "mt-1 text-xs text-slate-300 md:mt-0" : "mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0"}>
+                    Gastado: <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</span>
+                  </div>
                 </div>
               ))}
               {(compare?.monthA.topCategories ?? []).length === 0 ? <div className={`text-sm ${sub}`}>Sin datos.</div> : null}
@@ -380,12 +382,14 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                   key={c.categoryId}
                   className={
                     dark
-                      ? "group flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 hover:bg-slate-900 transition"
-                      : "group flex items-center justify-between rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 hover:bg-[rgb(var(--muted))] transition"
+                      ? "rounded-2xl border border-slate-800 bg-slate-950 p-3 flex flex-col md:flex-row md:items-center md:justify-between"
+                      : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
                   }
                 >
-                  <div className="truncate text-sm font-semibold group-hover:underline">{c.categoryName}</div>
-                  <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
+                  <div className={dark ? "truncate text-sm font-semibold" : "truncate text-sm font-semibold text-[rgb(var(--text))]"}>{c.categoryName}</div>
+                  <div className={dark ? "mt-1 text-xs text-slate-300 md:mt-0" : "mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0"}>
+                    Gastado: <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</span>
+                  </div>
                 </div>
               ))}
               {(compare?.monthB.topCategories ?? []).length === 0 ? <div className={`text-sm ${sub}`}>Sin datos.</div> : null}

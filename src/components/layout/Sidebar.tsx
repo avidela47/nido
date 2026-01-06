@@ -84,25 +84,24 @@ export function Sidebar() {
                   href={it.href}
                   className={[
                     "group flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition",
-                    "border border-transparent",
                     active
-                      ? "bg-[rgb(var(--muted))] border-[rgb(var(--border))]"
-                      : "hover:bg-[rgb(var(--muted))] hover:border-[rgb(var(--border))]",
+                      ? "border border-[rgb(var(--brand))] bg-[rgb(var(--card))] shadow-[0_0_0_1px_rgba(16,185,129,0.08)]"
+                      : "border border-transparent hover:bg-[rgb(var(--muted))] hover:border-[rgb(var(--border))]",
                   ].join(" ")}
                 >
                   <span
                     className={[
-                      "flex h-9 w-9 items-center justify-center rounded-2xl transition",
+                      "flex h-9 w-9 items-center justify-center rounded-2xl border transition",
                       active
-                        ? "bg-brand-gradient text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]"
-                        : "bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--subtext))] group-hover:text-[rgb(var(--fg))]",
+                        ? "border-transparent bg-white text-[rgb(var(--brand))] shadow-[0_8px_22px_rgba(0,0,0,0.18)]"
+                        : "border-[rgb(var(--border))] bg-[rgb(var(--card))] text-[rgb(var(--subtext))] group-hover:text-[rgb(var(--fg))]",
                     ].join(" ")}
                   >
                     <Icon size={18} />
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span className={active ? "font-semibold" : "font-semibold text-[rgb(var(--fg))]"}>
+                    <span className={active ? "font-semibold text-[rgb(var(--fg))]" : "font-semibold text-[rgb(var(--fg))]"}>
                       {it.label}
                     </span>
                     {it.href === "/reports/advanced" ? (

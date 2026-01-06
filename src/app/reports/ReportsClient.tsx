@@ -168,10 +168,12 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
             topCategories.map((c) => (
               <div
                 key={c.categoryId}
-                className="group flex items-center justify-between rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 hover:bg-[rgb(var(--muted))] transition"
+                className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
               >
-                <div className="truncate text-sm font-semibold group-hover:underline">{c.categoryName}</div>
-                <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</div>
+                <div className="truncate text-sm font-semibold text-[rgb(var(--text))]">{c.categoryName}</div>
+                <div className="mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0">
+                  Gastado: <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</span>
+                </div>
               </div>
             ))
           )}
