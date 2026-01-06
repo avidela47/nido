@@ -61,14 +61,6 @@ export default async function EditTxPage({
 }) {
   const id = params.id;
 
-  if (!ObjectId.isValid(id)) {
-    return (
-      <SectionCard title="Editar transacción" subtitle="ID inválido">
-        <div className="text-sm text-[rgb(var(--subtext))]">ID inválido.</div>
-      </SectionCard>
-    );
-  }
-
   const db = await getDb();
 
   const txDoc = (await db.collection("transactions").findOne({

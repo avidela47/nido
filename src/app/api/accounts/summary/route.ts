@@ -77,6 +77,10 @@ export async function GET(req: Request) {
     });
 
     // Agregación por accountId (incluye null/ausente como "sin cuenta")
+    // Regla de negocio (según tu lógica):
+    // - Si es transferencia y sale (transferSide="out") => cuenta como "pago" (expense) en la cuenta origen
+    // - Si es transferencia y entra (transferSide="in")  => cuenta como "ingreso" (income) en la cuenta destino
+    // Así el resumen por cuenta refleja: lo que entró, lo que salió (pagos), y el neto.
     const rows = (await db
       .collection("transactions")
       .aggregate([
@@ -90,6 +94,7 @@ export async function GET(req: Request) {
           $project: {
             type: 1,
             amount: 1,
+            transferSide: 1,
             date: 1,
             note: 1,
             accountId: { $ifNull: ["$accountId", null] },
@@ -100,12 +105,30 @@ export async function GET(req: Request) {
             _id: "$accountId",
             income: {
               $sum: {
-                $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$type", "income"] },
+                      { $and: [{ $eq: ["$type", "transfer"] }, { $eq: ["$transferSide", "in"] }] },
+                    ],
+                  },
+                  "$amount",
+                  0,
+                ],
               },
             },
             expense: {
               $sum: {
-                $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0],
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$type", "expense"] },
+                      { $and: [{ $eq: ["$type", "transfer"] }, { $eq: ["$transferSide", "out"] }] },
+                    ],
+                  },
+                  "$amount",
+                  0,
+                ],
               },
             },
             count: { $sum: 1 },

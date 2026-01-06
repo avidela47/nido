@@ -68,7 +68,13 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   const byPersonAgg = (await db
     .collection("transactions")
     .aggregate([
-      { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
+      {
+        $match: {
+          deletedAt: { $exists: false },
+          personId: { $exists: true, $ne: null },
+          date: { $gte: start, $lt: end },
+        },
+      },
       {
         $group: {
           _id: { personId: "$personId", type: "$type" },
@@ -79,7 +85,12 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
     .toArray()) as unknown as TxAggRow[];
 
   const personIds = Array.from(
-    new Set(byPersonAgg.map((r) => r._id.personId.toString()))
+    new Set(
+      byPersonAgg
+        .map((r) => r._id?.personId)
+        .filter((id): id is ObjectId => !!id)
+        .map((id) => id.toString())
+    )
   );
 
   const peopleDocs = await db
@@ -98,7 +109,9 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   >();
 
   for (const row of byPersonAgg) {
-    const pid = row._id.personId.toString();
+    const rawId = row._id?.personId;
+    if (!rawId) continue;
+    const pid = rawId.toString();
     const type = row._id.type;
     const total = Number(row.total) || 0;
 

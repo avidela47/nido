@@ -1,5 +1,3 @@
-  // Botón flotante para nuevo movimiento, definido justo antes del return para acceder a monthValue
-
 "use client";
 
 import Link from "next/link";
@@ -7,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MonthInput } from "../../components/ui/MonthInput";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "../../components/ui/Toast";
-import { PersonRow } from "../../lib/types";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type AccountRow = {
   _id: string;
@@ -16,10 +14,10 @@ type AccountRow = {
   person?: { _id: string; name: string } | null;
 };
 
-export type TxItem = {
+type TxItem = {
   _id: string;
-  type: string;
   date: string;
+  type: "income" | "expense" | "transfer";
   amount: number;
   note?: string;
   category?: { _id: string; name: string } | null;
@@ -39,50 +37,80 @@ type TransferDisplay = {
 
 export type DisplayItem = TxItem & { __transfer?: TransferDisplay };
 
-function currentMonthYYYYMM() {
-  const d = new Date();
+function money(n: number) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(n);
+}
+
+function yyyymm(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
 }
 
-function money(amount: number): string {
-  return amount.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+function addMonths(ym: string, delta: number) {
+  const m = /^(\d{4})-(\d{2})$/.exec(ym);
+  if (!m) return ym;
+  const year = Number(m[1]);
+  const monthIndex = Number(m[2]) - 1;
+  const date = new Date(year, monthIndex, 1);
+  date.setMonth(date.getMonth() + delta);
+  return yyyymm(date);
 }
 
-function moneyTransfer(amount: number, side: "in" | "out" | null | undefined): string {
-  const sign = side === "out" ? "-" : side === "in" ? "+" : "";
-  return sign + money(Math.abs(amount));
-}
+function groupTransfers(items: TxItem[]): DisplayItem[] {
+  const byGroup = new Map<string, TxItem[]>();
+  const others: DisplayItem[] = [];
 
-export default function TransactionsClient({ month, items, q }: { month: string; items: TxItem[]; q?: string }) {
-  const router = useRouter();
-  const params = useSearchParams();
-
-  const [busyId, setBusyId] = useState<string>("");
-  const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [people, setPeople] = useState<PersonRow[]>([]);
-  // Sincronizar personParam con searchParams
-  const personParam = useMemo(() => params.get("personId") ?? "", [params]);
-  const setPersonParam = (next: string) => {
-    const sp = new URLSearchParams(params.toString());
-    if (!next) sp.delete("personId");
-    else sp.set("personId", next);
-    router.push(`/transactions?${sp.toString()}`);
-  };
-
-  // Resetear cuenta si la cuenta seleccionada no pertenece a la persona seleccionada
-  useEffect(() => {
-    if (!personParam) return;
-    // Buscar cuentas válidas para la persona
-    const validAccounts = accounts.filter(a => a.person && a.person._id === personParam).map(a => a._id);
-    if (accountParam && !validAccounts.includes(accountParam)) {
-      setAccountFilter("");
+  for (const it of items) {
+    if (it.type !== "transfer" || !it.transfer?.groupId) {
+      others.push(it);
+      continue;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personParam, accounts]);
+    const key = it.transfer.groupId;
+    const arr = byGroup.get(key) ?? [];
+    arr.push(it);
+    byGroup.set(key, arr);
+  }
 
-  const monthValue = useMemo(() => month || currentMonthYYYYMM(), [month]);
+  const transfers: DisplayItem[] = [];
+  for (const [groupId, arr] of byGroup.entries()) {
+    const out = arr.find((x) => x.transfer?.side === "out") ?? null;
+    const inc = arr.find((x) => x.transfer?.side === "in") ?? null;
+
+    const amount = out?.amount ?? inc?.amount ?? 0;
+    const date = out?.date ?? inc?.date ?? "";
+    const note = (out?.note ?? inc?.note ?? "").trim();
+
+    const fromAccount = out?.account ? { id: out.account._id, name: out.account.name } : null;
+    const toAccount = inc?.account ? { id: inc.account._id, name: inc.account.name } : null;
+
+    const rep: DisplayItem = (out ?? inc ?? arr[0]) as DisplayItem;
+    rep.__transfer = { groupId, fromAccount, toAccount, amount, date, note };
+
+    transfers.push(rep);
+  }
+
+  const all = [...others, ...transfers];
+  all.sort((a, b) => {
+    const da = new Date(a.type === "transfer" ? a.__transfer?.date ?? a.date : a.date).getTime();
+    const db = new Date(b.type === "transfer" ? b.__transfer?.date ?? b.date : b.date).getTime();
+    return db - da;
+  });
+
+  return all;
+}
+
+export default function TransactionsClient() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const toast = useToast();
+
+  const monthParam = useMemo(() => params.get("month") ?? "", [params]);
+  const monthValue = useMemo(
+    () => (monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : yyyymm(new Date())),
+    [monthParam]
+  );
+
   const accountParam = useMemo(() => params.get("accountId") ?? "", [params]);
   const qParam = useMemo(() => params.get("q") ?? "", [params]);
   const showTransfersParam = useMemo(() => params.get("showTransfers") ?? "", [params]);
@@ -91,7 +119,6 @@ export default function TransactionsClient({ month, items, q }: { month: string;
   const [qDraft, setQDraft] = useState<string>(qParam);
 
   useEffect(() => {
-    // Mantener el input sincronizado si cambian los searchParams (back/forward)
     setQDraft(qParam);
   }, [qParam]);
 
@@ -101,439 +128,286 @@ export default function TransactionsClient({ month, items, q }: { month: string;
     router.push(`/transactions?${sp.toString()}`);
   }
 
-  function setAccountFilter(next: string) {
+  function setAccount(next: string) {
     const sp = new URLSearchParams(params.toString());
-    if (!next) sp.delete("accountId");
-    else sp.set("accountId", next);
+    if (next) sp.set("accountId", next);
+    else sp.delete("accountId");
     router.push(`/transactions?${sp.toString()}`);
   }
 
-  function toggleTransfers(next: boolean) {
+  function setQ(next: string) {
     const sp = new URLSearchParams(params.toString());
-    if (next) sp.set("showTransfers", "1");
-    else sp.delete("showTransfers");
+    if (next.trim()) sp.set("q", next.trim());
+    else sp.delete("q");
     router.push(`/transactions?${sp.toString()}`);
   }
 
-  function setQuery(next: string) {
+  function toggleTransfers() {
     const sp = new URLSearchParams(params.toString());
-    const trimmed = next.trim();
-    if (!trimmed) sp.delete("q");
-    else sp.set("q", trimmed);
+    const current = sp.get("showTransfers") === "1";
+    if (current) sp.delete("showTransfers");
+    else sp.set("showTransfers", "1");
     router.push(`/transactions?${sp.toString()}`);
+  }
+
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [items, setItems] = useState<TxItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function removeTx(id: string) {
+    try {
+      const res = await fetch(`/api/transactions/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !json?.ok) {
+        toast.push({ title: "Error", description: json?.error ?? "No se pudo eliminar.", variant: "error" });
+        return;
+      }
+      setItems((prev) => prev.filter((t) => t._id !== id));
+      toast.push({ title: "Eliminado", description: "Movimiento eliminado (soft delete).", variant: "ok" });
+    } catch (e) {
+      toast.push({ title: "Error", description: String(e), variant: "error" });
+    }
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      // Evitar push redundante si ya coincide
-      if ((qParam ?? "") !== (qDraft ?? "")) setQuery(qDraft);
-    }, 250);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDraft]);
-
-  useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     (async () => {
       try {
-        const [accRes, peopleRes] = await Promise.all([
-          fetch("/api/accounts", { cache: "no-store" }),
-          fetch("/api/people", { cache: "no-store" })
-        ]);
-        const accJson = (await accRes.json().catch(() => null)) as { ok: true; accounts: AccountRow[] } | { ok: false; error?: string } | null;
-        const peopleJson = (await peopleRes.json().catch(() => null)) as { ok: true; people: PersonRow[] } | { ok: false; error?: string } | null;
-        if (cancelled) return;
-        if (accRes.ok && accJson && accJson.ok === true) {
-          setAccounts(accJson.accounts ?? []);
-        }
-        if (peopleRes.ok && peopleJson && peopleJson.ok === true) {
-          setPeople(peopleJson.people ?? []);
-        }
-      } catch {}
+        const a = await fetch("/api/accounts").then((r) => r.json());
+        if (canceled) return;
+        setAccounts(Array.isArray(a) ? a : []);
+      } catch {
+        // no bloquear UI
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      canceled = true;
+    };
   }, []);
 
-  const toast = useToast();
-  async function remove(id: string) {
-    setBusyId(id);
-    try {
-      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) {
-        toast.push({ title: "Error al eliminar", description: json?.error ?? "No se pudo borrar.", variant: "error" });
-      } else {
-        toast.push({ title: "Movimiento eliminado", description: "El movimiento fue eliminado correctamente.", variant: "ok" });
-      }
-    } catch {
-      toast.push({ title: "Error al eliminar", description: "No se pudo borrar.", variant: "error" });
-    }
-    setBusyId("");
-    router.refresh();
-  }
+  useEffect(() => {
+    let canceled = false;
+    setLoading(true);
 
-  const groupedItems: DisplayItem[] = useMemo(() => {
-    const transfersByGroup = new Map<string, TxItem[]>();
-    const passthrough: DisplayItem[] = [];
+    const sp = new URLSearchParams();
+    sp.set("month", monthValue);
+    if (accountParam) sp.set("accountId", accountParam);
+    if (qParam) sp.set("q", qParam);
+    if (showTransfers) sp.set("showTransfers", "1");
 
-    for (const it of items) {
-      if (it.type === "transfer" && it.transfer?.groupId) {
-        const arr = transfersByGroup.get(it.transfer.groupId) ?? [];
-        arr.push(it);
-        transfersByGroup.set(it.transfer.groupId, arr);
-      } else {
-        passthrough.push(it as DisplayItem);
-      }
-    }
-
-    const merged: DisplayItem[] = [];
-    for (const [groupId, legs] of transfersByGroup.entries()) {
-      const outLeg = legs.find((l) => l.transfer?.side === "out") ?? legs[0] ?? null;
-      const inLeg = legs.find((l) => l.transfer?.side === "in") ?? (legs.length > 1 ? legs[1] : null);
-
-      const fromAcc = outLeg?.account?._id
-        ? { id: outLeg.account._id, name: outLeg.account?.name ?? "(Sin cuenta)" }
-        : null;
-      const toAcc = inLeg?.account?._id
-        ? { id: inLeg.account._id, name: inLeg.account?.name ?? "(Sin cuenta)" }
-        : null;
-
-      const amount = Math.abs(outLeg?.amount ?? inLeg?.amount ?? 0);
-      const date = outLeg?.date ?? inLeg?.date ?? "";
-      const note = (outLeg?.note ?? inLeg?.note ?? "").trim();
-
-      merged.push({
-        ...(outLeg ?? (inLeg as TxItem)),
-        type: "transfer",
-        transfer: { groupId, side: undefined },
-        __transfer: {
-          groupId,
-          fromAccount: fromAcc,
-          toAccount: toAcc,
-          amount,
-          date,
-          note,
-        },
+    fetch(`/api/transactions?${sp.toString()}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (canceled) return;
+        // API contract: { ok: true, month, items }
+        const items = Array.isArray((data as { items?: unknown } | null)?.items)
+          ? ((data as { items: TxItem[] }).items ?? [])
+          : [];
+        setItems(items);
+      })
+      .catch((e) => {
+        toast.push({ title: "Error", description: String(e), variant: "error" });
+      })
+      .finally(() => {
+        if (canceled) return;
+        setLoading(false);
       });
-    }
 
-    const all = [...passthrough, ...merged];
-    all.sort((a, b) => {
-      const da = a.__transfer?.date ?? a.date ?? "";
-      const db = b.__transfer?.date ?? b.date ?? "";
-      return db.localeCompare(da);
-    });
+    return () => {
+      canceled = true;
+    };
+  }, [monthValue, accountParam, qParam, showTransfers, toast]);
 
-    return all;
-  }, [items]);
- 
-  // Filtro PRO: texto (q) sobre items agrupados, incluyendo transfers Origen → Destino
-  const visibleItems = useMemo(() => {
-    let arr = showTransfers ? groupedItems : groupedItems.filter((t) => t.type !== "transfer");
-    if (q && q.trim().length > 0) {
-      const qNorm = q.trim().toLowerCase();
-      arr = arr.filter((t) => {
-        const isTransfer = t.type === "transfer";
-        const accountName = t.account?.name ?? "";
-        let transferPhrase = "";
-        if (isTransfer && t.__transfer) {
-          const from = t.__transfer.fromAccount?.name ?? "";
-          const to = t.__transfer.toAccount?.name ?? "";
-          if (from && to) {
-            transferPhrase = `${from} → ${to} ${to} → ${from}`;
-          }
-        }
-        const transferHint = isTransfer ? `transferencia ${accountName}` : "";
-        const hay = `${t.note ?? ""} ${t.person?.name ?? ""} ${t.category?.name ?? ""} ${accountName} ${transferHint} ${transferPhrase}`.toLowerCase();
-        return hay.includes(qNorm);
-      });
-    }
-    return arr;
-  }, [groupedItems, showTransfers, q]);
+  const displayItems: DisplayItem[] = useMemo(() => {
+    const grouped = groupTransfers(items);
+    if (showTransfers) return grouped;
+    return grouped.filter((x) => x.type !== "transfer");
+  }, [items, showTransfers]);
 
-  const totals = useMemo(() => {
-    // Totales “financieros”: solo income/expense (exclude transfer)
-    let income = 0;
-    let expense = 0;
-    for (const t of visibleItems) {
-      if (t.type === "income") income += t.amount;
-      else if (t.type === "expense") expense += Math.abs(t.amount);
-    }
-    return { income, expense, net: income - expense };
-  }, [visibleItems]);
-
-  // Filtrar items por persona si está seleccionada
-  const filteredItems = useMemo(() => {
-    // Si no hay filtro de persona ni de cuenta, mostrar todo
-    if (!personParam && !accountParam) return visibleItems;
-
-    return visibleItems.filter((t) => {
-      // Si ambos filtros están activos, exigir ambos
-      if (personParam && accountParam) {
-        const personMatch = t.person && typeof t.person === "object" && t.person !== null && typeof t.person._id === "string" && t.person._id === personParam;
-        const accountMatch = t.account && typeof t.account === "object" && t.account !== null && typeof t.account._id === "string" && t.account._id === accountParam;
-        // Además, permitir si la cuenta pertenece a la persona seleccionada
-        const acc = accounts.find(a => a._id === accountParam);
-        const accountPersonMatch = acc && acc.person && acc.person._id === personParam;
-        return (personMatch && accountMatch) || accountPersonMatch;
-      }
-      // Solo filtro de persona
-      if (personParam) {
-        if (t.person && typeof t.person === "object" && t.person !== null && typeof t.person._id === "string") {
-          if (t.person._id === personParam) return true;
-        }
-        const accId = t.account && typeof t.account === "object" && t.account !== null && typeof t.account._id === "string" ? t.account._id : null;
-        if (accId) {
-          const acc = accounts.find(a => a._id === accId);
-          if (acc && acc.person && acc.person._id === personParam) return true;
-        }
-        return false;
-      }
-      // Solo filtro de cuenta
-      if (accountParam) {
-        if (t.account && typeof t.account === "object" && t.account !== null && typeof t.account._id === "string") {
-          if (t.account._id === accountParam) return true;
-        }
-        return false;
-      }
-      return true;
-    });
-  }, [visibleItems, personParam, accountParam, accounts]);
+  const Fab = (
+    <div className="fixed bottom-6 right-6 z-50">
+      <Link
+        href={`/transactions/new?month=${monthValue}${accountParam ? `&accountId=${encodeURIComponent(accountParam)}` : ""}`}
+        className="rounded-full bg-linear-to-r from-[rgb(var(--brand))] to-[rgb(var(--brand-2))] px-5 py-3 text-sm font-semibold text-white shadow-lg hover:opacity-95"
+      >
+        Nuevo
+      </Link>
+    </div>
+  );
 
   return (
-    <div className="space-y-3">
-      <a
-        href={`/transactions/new?month=${encodeURIComponent(monthValue)}`}
-        style={{
-          position: 'fixed',
-          right: 24,
-          bottom: 24,
-          zIndex: 1000,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-          background: '#22c55e', // verde
-          color: '#fff',
-          borderRadius: '24px',
-          padding: '10px 20px',
-          fontSize: '1rem',
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer',
-        }}
-        title="Nuevo movimiento"
-      >
-        <span style={{fontSize: '1.5rem', fontWeight: 900, lineHeight: 1}}>＋</span>
-        <span>Nuevo</span>
-      </a>
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="flex flex-wrap gap-2 md:items-center">
-          <MonthInput
-            value={monthValue}
-            onChange={(e) => setMonth(e.target.value)}
-          />
+    <div className="space-y-4">
+      {Fab}
 
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Persona</div>
-            <select
-              value={personParam}
-              onChange={e => setPersonParam(e.target.value)}
-              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
+      <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
+        <div>
+          <div className="text-sm font-semibold">Movimientos</div>
+          <div className="mt-1 text-xs text-[rgb(var(--subtext))]">Listado por mes. Editar o borrar (soft delete).</div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3">
+          {/* Fila mes */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="rounded-2xl border border-[rgb(var(--brand))] bg-[rgba(16,185,129,0.06)] px-3 py-2 text-sm text-[rgb(var(--brand))] hover:bg-[rgba(16,185,129,0.12)]"
+              onClick={() => setMonth(addMonths(monthValue, -1))}
+              aria-label="Mes anterior"
             >
-              <option value="">Todas</option>
-              {people.map((p) => (
-                <option key={p._id} value={p._id}>{p.name}</option>
+              <ChevronLeft size={18} />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Mes</div>
+              <MonthInput value={monthValue} onChange={(e) => setMonth(e.currentTarget.value)} />
+            </div>
+
+            <button
+              type="button"
+              className="rounded-2xl border border-[rgb(var(--brand))] bg-[rgba(16,185,129,0.06)] px-3 py-2 text-sm text-[rgb(var(--brand))] hover:bg-[rgba(16,185,129,0.12)]"
+              onClick={() => setMonth(addMonths(monthValue, +1))}
+              aria-label="Mes siguiente"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* Fila filtros */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
+              value={accountParam}
+              onChange={(e) => setAccount(e.target.value)}
+            >
+              <option value="">Todas las cuentas</option>
+              {accounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.name}
+                </option>
               ))}
             </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Cuenta</div>
-              <select
-                value={accountParam}
-                onChange={(e) => setAccountFilter(e.target.value)}
-                className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
-              >
-                <option value="">Todas</option>
-                <option value="__none">Sin cuenta</option>
-                {accounts
-                  .filter(a => !personParam || (a.person && a.person._id === personParam))
-                  .map((a) => (
-                    <option key={a._id} value={a._id}>
-                      {a.name}
-                    </option>
-                  ))}
-              </select>
-          </div>
 
-          <label className="flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold">
-            <input type="checkbox" checked={showTransfers} onChange={(e) => toggleTransfers(e.target.checked)} />
-            Mostrar transferencias
-          </label>
-
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Buscar</div>
             <input
               value={qDraft}
               onChange={(e) => setQDraft(e.target.value)}
-              placeholder="Nota, persona, categoría…"
-              className="w-64 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
+              placeholder="Buscar (nota, categoría, persona)"
+              className="w-75 max-w-[70vw] rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
             />
+
+            <button
+              type="button"
+              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm hover:bg-[rgb(var(--muted))]"
+              onClick={() => setQ(qDraft)}
+            >
+              Buscar
+            </button>
+
+            <button
+              type="button"
+              className={[
+                "rounded-2xl border border-[rgb(var(--border))] px-3 py-2 text-sm transition",
+                showTransfers ? "bg-[rgb(var(--muted))]" : "bg-white hover:bg-[rgb(var(--muted))]",
+              ].join(" ")}
+              onClick={toggleTransfers}
+              title="Mostrar/ocultar transferencias"
+            >
+              Transfers
+            </button>
           </div>
         </div>
 
-        <div className="w-full flex justify-end">
-          <Link
-            href={`/transactions/new?month=${encodeURIComponent(monthValue)}`}
-            className="inline-flex items-center justify-center rounded-2xl bg-[rgb(var(--primary))] px-4 py-2 text-sm font-semibold text-white mt-2"
-          >
-            Nuevo movimiento
-          </Link>
-        </div>
+        <div className="mt-4">
+          {loading ? <div className="text-sm text-[rgb(var(--subtext))]">Cargando...</div> : null}
 
-        <Link
-          href={`/transactions/new?month=${encodeURIComponent(monthValue)}`}
-          className="inline-flex items-center justify-center rounded-2xl bg-[rgb(var(--primary))] px-4 py-2 text-sm font-semibold text-white"
-        >
-          Nuevo movimiento
-        </Link>
-      </div>
+          <div className="mt-3 space-y-2">
+            {!loading &&
+              displayItems.map((t) => {
+                const isTransfer = t.type === "transfer";
+                const transferSide = t.transfer?.side ?? null;
 
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-        <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-3">
-          <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Ingresos</div>
-          <div className="mt-1 text-sm font-bold text-emerald-700">{money(totals.income)}</div>
-        </div>
-        <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-3">
-          <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Gastos</div>
-          <div className="mt-1 text-sm font-bold text-red-600">{money(totals.expense)}</div>
-        </div>
-        <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-3">
-          <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Neto</div>
-          <div className={totals.net < 0 ? "mt-1 text-sm font-bold text-red-600" : "mt-1 text-sm font-bold text-emerald-700"}>
-            {money(totals.net)}
-          </div>
-        </div>
-      </div>
+                const signedLabel =
+                  t.type === "income"
+                    ? `+ ${money(t.amount)}`
+                    : t.type === "expense"
+                    ? `- ${money(t.amount)}`
+                    : transferSide === "in"
+                    ? `+ ${money(t.amount)}`
+                    : transferSide === "out"
+                    ? `- ${money(t.amount)}`
+                    : money(t.amount);
 
-  <div className="space-y-2">
-        {filteredItems.map((t) => {
-                  const isTransfer = t.type === "transfer";
-                  const meta = isTransfer ? t.__transfer ?? null : null;
+                const title = isTransfer
+                  ? (() => {
+                      const tr = t.__transfer;
+                      if (!tr) return "Transferencia";
+                      const from = tr.fromAccount?.name ?? "—";
+                      const to = tr.toAccount?.name ?? "—";
+                      return `Transferencia: ${from} → ${to}`;
+                    })()
+                  : t.category?.name ?? (t.type === "income" ? "Ingreso" : "Pago");
 
-                  const displayDate = isTransfer ? meta?.date ?? t.date : t.date;
-                  let title = "";
-                  if (isTransfer) {
-                    title = `Transferencia · ${(meta?.fromAccount?.name ?? "(Sin cuenta)")} → ${(meta?.toAccount?.name ?? "(Sin cuenta)")}`;
-                  } else if (t.note && t.note.trim()) {
-                    title = t.note.trim();
-                  } else if (t.account?.name) {
-                    title = t.account.name;
-                  } else if (t.person?.name) {
-                    title = t.person.name;
-                  } else if (t.category?.name) {
-                    title = t.category.name;
-                  } else {
-                    title = "(Sin nota)";
+                const subtitleParts: string[] = [];
+                if (!isTransfer) {
+                  if (t.account?.name) subtitleParts.push(`Cuenta: ${t.account.name}`);
+                  if (t.person?.name) subtitleParts.push(`Persona: ${t.person.name}`);
+                  if (t.note) subtitleParts.push(t.note);
+                } else {
+                  const tr = t.__transfer;
+                  if (tr?.note) subtitleParts.push(tr.note);
+                }
+
+                const subtitle = subtitleParts.filter(Boolean).join(" · ");
+
+                const dateStr = (() => {
+                  const d = isTransfer ? t.__transfer?.date ?? t.date : t.date;
+                  try {
+                    return new Date(d).toLocaleDateString("es-AR");
+                  } catch {
+                    return d;
                   }
+                })();
 
-                  const amountText = isTransfer ? moneyTransfer(meta?.amount ?? t.amount, "out") : money(t.amount);
+                const isNegative = t.type === "expense" || transferSide === "out";
 
-                  return (
-                    <div
-                      key={isTransfer ? `transfer:${meta?.groupId ?? t._id}` : t._id}
-                      className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4"
-                    >
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">{displayDate}</div>
+                return (
+                  <div key={t._id} className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">{title}</div>
+                        <div className="mt-1 text-xs text-[rgb(var(--subtext))] truncate">{subtitle}</div>
+                        <div className="mt-1 text-xs text-[rgb(var(--subtext))]">{dateStr}</div>
+                      </div>
 
-                            {isTransfer ? (
-                              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                                Transferencia
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-[rgb(var(--muted))] px-2 py-0.5 text-xs font-semibold text-[rgb(var(--text))]">
-                                {t.type === "income" ? "Ingreso" : t.type === "expense" ? "Gasto" : t.type}
-                              </span>
-                            )}
-
-                            {!isTransfer && t.account?.name && (
-                              <span className="rounded-full bg-[rgb(var(--muted))] px-2 py-0.5 text-xs font-semibold text-[rgb(var(--text))]">
-                                {t.account.name}
-                              </span>
-                            )}
-
-                            {!isTransfer && t.category?.name && (
-                              <span className="rounded-full bg-[rgb(var(--muted))] px-2 py-0.5 text-xs font-semibold text-[rgb(var(--text))]">
-                                {t.category.name}
-                              </span>
-                            )}
-
-                            {!isTransfer && t.person?.name && (
-                              <span className="rounded-full bg-[rgb(var(--muted))] px-2 py-0.5 text-xs font-semibold text-[rgb(var(--text))]">
-                                {t.person.name}
-                              </span>
-                            )}
-                          </div>
-
-                          {isTransfer ? (
-                            <Link
-                              href={`/transfers/${encodeURIComponent(meta?.groupId ?? "")}`}
-                              className="mt-1 block truncate text-sm font-semibold hover:underline"
-                            >
-                              {title}
-                            </Link>
-                          ) : (
-                            <div className="mt-1 truncate text-sm font-semibold">{title}</div>
-                          )}
-                          {isTransfer && meta?.note && (
-                            <div className="mt-1 truncate text-xs text-[rgb(var(--subtext))]">{meta.note}</div>
-                          )}
+                      <div className="shrink-0 text-right">
+                        <div className={`text-sm font-semibold ${isNegative ? "text-red-700" : "text-emerald-700"}`}>
+                          {signedLabel}
                         </div>
-
-                        <div className="flex flex-col gap-2 md:items-end">
-                          <div className={isTransfer ? "text-base font-bold text-[rgb(var(--text))]" : t.amount < 0 ? "text-base font-bold text-red-600" : "text-base font-bold text-emerald-700"}>
-                            {amountText}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {isTransfer ? (
-                              <Link
-                                href={`/transfers/${encodeURIComponent(meta?.groupId ?? "")}`}
-                                className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] px-3 py-2 text-xs font-semibold text-[rgb(var(--text))]"
-                              >
-                                Ver detalle
-                              </Link>
-                            ) : (
-                              <>
-                                <Link
-                                  href={`/transactions/${t._id}/edit?month=${encodeURIComponent(monthValue)}`}
-                                  className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] px-3 py-2 text-xs font-semibold text-[rgb(var(--text))]"
-                                >
-                                  Editar
-                                </Link>
-
-                                <button
-                                  type="button"
-                                  onClick={() => remove(t._id)}
-                                  disabled={busyId === t._id}
-                                  className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-70"
-                                >
-                                  {busyId === t._id ? "Borrando…" : "Borrar"}
-                                </button>
-                              </>
-                            )}
-                          </div>
+                        <div className="mt-1 flex items-center justify-end gap-2">
+                          <Link
+                            href={`/transactions/${t._id}/edit?month=${encodeURIComponent(monthValue)}`}
+                            className="inline-flex items-center rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-1 text-xs font-semibold text-[rgb(var(--accent))] hover:opacity-90"
+                          >
+                            Editar
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => void removeTx(t._id)}
+                            className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:opacity-90"
+                          >
+                            Eliminar
+                          </button>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
 
-        {visibleItems.length === 0 && (
-          <div className="text-sm text-[rgb(var(--subtext))]">No hay movimientos en {monthValue}.</div>
-        )}
+            {displayItems.length === 0 && !loading ? (
+              <div className="text-sm text-[rgb(var(--subtext))]">No hay movimientos en {monthValue}.</div>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

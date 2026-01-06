@@ -299,7 +299,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
           <div>
             <div className="text-sm font-semibold">Resumen del mes</div>
             <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-              Ingresos · Gastos · Neto por cuenta (y movimientos “Sin cuenta”).
+              Ingresos · Pagos · Neto por cuenta. (Las transferencias entran como ingreso en destino y pago en origen.)
             </div>
           </div>
 
@@ -354,7 +354,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
                   <div className="text-right text-xs">
                     <div className="text-green-700">+ {money(s.income)}</div>
-                    <div className="text-red-700">- {money(s.expense)}</div>
+                    <div className="text-red-700">Pagos: {money(s.expense)}</div>
                   </div>
                 </div>
 

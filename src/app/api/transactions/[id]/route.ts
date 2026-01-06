@@ -109,8 +109,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const db = await getDb();
 
     // Validación coherencia categoría vs tipo si ambos están
-    const existing = await db.collection("transactions").findOne({ _id: new ObjectId(id) });
-    if (!existing || (existing as { deletedAt?: unknown }).deletedAt) {
+    const existing = await db
+      .collection("transactions")
+      .findOne({ _id: new ObjectId(id), deletedAt: { $exists: false } });
+
+    if (!existing) {
       return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
     }
 
