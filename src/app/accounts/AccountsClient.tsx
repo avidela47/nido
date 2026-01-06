@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "../../components/ui/Toast";
 import { MonthInput } from "../../components/ui/MonthInput";
 import { Plus, Pencil, Save, Trash2, X, CreditCard, Wallet, Landmark, Smartphone } from "lucide-react";
+import AccountLedgerModal from "./AccountLedgerModal";
 
 type SummaryItem = {
   key: string; // accountId o "__none__"
@@ -54,6 +56,8 @@ function normalizeName(v: string): string {
 
 export default function AccountsClient({ initial, people }: { initial: Account[]; people: Person[] }) {
   const toast = useToast();
+  const router = useRouter();
+  const params = useSearchParams();
   const [items, setItems] = useState<Account[]>(initial);
 
   const [month, setMonth] = useState<string>(() => {
@@ -65,6 +69,27 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
   const [summary, setSummary] = useState<SummaryItem[] | null>(null);
   const [summaryError, setSummaryError] = useState<string>("");
+
+  const ledgerId = params.get("ledger") ?? "";
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+
+  useEffect(() => {
+    setLedgerOpen(Boolean(ledgerId));
+  }, [ledgerId]);
+
+  function openLedger(accountId: string) {
+    const sp = new URLSearchParams(params.toString());
+    sp.set("ledger", accountId);
+    // Mantener el mes seleccionado para que el detalle coincida.
+    sp.set("month", month);
+    router.push(`/accounts?${sp.toString()}`);
+  }
+
+  function closeLedger() {
+    const sp = new URLSearchParams(params.toString());
+    sp.delete("ledger");
+    router.push(`/accounts?${sp.toString()}`);
+  }
 
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -294,6 +319,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
   return (
     <div className="space-y-4">
+      <AccountLedgerModal open={ledgerOpen} onClose={closeLedger} accountId={ledgerId} month={month} />
       <div className="rounded-3xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
@@ -327,13 +353,15 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
             const filter = s.account._id;
 
             return (
-              <a
+              <div
                 key={s.key}
-                href={`/transactions?month=${encodeURIComponent(month)}&accountId=${encodeURIComponent(filter)}`}
                 className="group rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-3 transition hover:bg-[rgb(var(--muted))]"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <a
+                    href={`/transactions?month=${encodeURIComponent(month)}&accountId=${encodeURIComponent(filter)}`}
+                    className="min-w-0 flex-1"
+                  >
                     <div className="flex items-center gap-2">
                       <span className={`inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-semibold ${badgeClass(t)}`}>
                         <Icon size={14} /> {typeLabel(t)}
@@ -350,11 +378,24 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
                     <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
                       {s.count} mov. · Neto: <span className="font-semibold">{money(s.net)}</span>
                     </div>
-                  </div>
+                  </a>
 
                   <div className="text-right text-xs">
                     <div className="text-green-700">+ {money(s.income)}</div>
                     <div className="text-red-700">Pagos: {money(s.expense)}</div>
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openLedger(filter);
+                        }}
+                        className="rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-1 text-[11px] font-semibold text-[rgb(var(--accent))] hover:opacity-90"
+                      >
+                        Detalle
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -379,7 +420,7 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
                     </div>
                   </div>
                 ) : null}
-              </a>
+              </div>
             );
           })}
         </div>

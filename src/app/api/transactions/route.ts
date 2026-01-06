@@ -173,13 +173,19 @@ export async function GET(req: Request) {
         amount: Number.isFinite(amount) ? amount : 0,
         date: dateIso,
         note: typeof t.note === "string" ? t.note : "",
-        person: { id: personId, name: personName },
-        category: { id: categoryId, name: cat.name, type: cat.type },
-        account: accountId && acc ? {
-          id: accountId,
-          name: acc.name,
-          person: acc.person ? (typeof acc.person === "object" && acc.person._id ? { _id: acc.person._id.toString(), name: acc.person.name ?? "—" } : null) : null
-        } : null,
+        person: personId ? { _id: personId, name: personName } : null,
+        category: categoryId ? { _id: categoryId, name: cat.name } : null,
+        account:
+          accountId && acc
+            ? {
+                _id: accountId,
+                name: acc.name,
+                person:
+                  acc.person && typeof acc.person === "object" && acc.person._id
+                    ? { _id: acc.person._id.toString(), name: acc.person.name ?? "—" }
+                    : null,
+              }
+            : null,
         transfer: type === "transfer" && transferGroupId
           ? { groupId: transferGroupId, side: transferSide }
           : null,

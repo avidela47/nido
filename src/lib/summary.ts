@@ -180,7 +180,43 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   // Variable peopleMapAccounts eliminada porque no se usa
   const accountAgg = await db.collection("transactions").aggregate([
     { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
-    { $group: { _id: "$accountId", balance: { $sum: "$amount" } } },
+    {
+      $group: {
+        _id: "$accountId",
+        balance: {
+          $sum: {
+            $switch: {
+              branches: [
+                // Ingresos
+                { case: { $eq: ["$type", "income"] }, then: "$amount" },
+                // Pagos (egresos)
+                { case: { $eq: ["$type", "expense"] }, then: { $multiply: ["$amount", -1] } },
+                // Transferencias: entrada suma, salida resta
+                {
+                  case: {
+                    $and: [
+                      { $eq: ["$type", "transfer"] },
+                      { $eq: ["$transferSide", "in"] },
+                    ],
+                  },
+                  then: "$amount",
+                },
+                {
+                  case: {
+                    $and: [
+                      { $eq: ["$type", "transfer"] },
+                      { $eq: ["$transferSide", "out"] },
+                    ],
+                  },
+                  then: { $multiply: ["$amount", -1] },
+                },
+              ],
+              default: 0,
+            },
+          },
+        },
+      },
+    },
   ]).toArray();
   type AccountAggRow = { _id: ObjectId; balance: number };
   // Buscar personas faltantes antes de mapear

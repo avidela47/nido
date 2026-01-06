@@ -193,7 +193,7 @@ export default async function Page({ searchParams }: { searchParams?: { month?: 
             </div>
           );
         })}
-      {summary.byAccount && summary.byAccount.filter((a) => a.balance < 5000).length === 0 && (
+      {summary.byAccount && summary.byAccount.filter((a) => a.balance < 10000).length === 0 && (
         <div className="text-sm text-[rgb(var(--subtext))]">No hay cuentas con saldo bajo.</div>
       )}
     </div>

@@ -219,9 +219,16 @@ export default function TransactionsClient() {
   }, [monthValue, accountParam, qParam, showTransfers, toast]);
 
   const displayItems: DisplayItem[] = useMemo(() => {
-    const grouped = groupTransfers(items);
-    if (showTransfers) return grouped;
-    return grouped.filter((x) => x.type !== "transfer");
+    if (showTransfers) {
+      // Modo "Transfers": agrupar y mostrar cada transferencia como un solo item.
+      return groupTransfers(items);
+    }
+
+    // Vista normal: las transferencias se reflejan como movimientos (pago/ingreso) según el lado.
+    // Para no duplicar, mostramos ambas puntas (in/out) como items separados.
+    return items
+      .filter((x) => x.type !== "transfer" || !!x.transfer?.side)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [items, showTransfers]);
 
   const Fab = (
@@ -324,6 +331,7 @@ export default function TransactionsClient() {
               displayItems.map((t) => {
                 const isTransfer = t.type === "transfer";
                 const transferSide = t.transfer?.side ?? null;
+                const transferAsMovement = isTransfer && !showTransfers;
 
                 const signedLabel =
                   t.type === "income"
@@ -336,7 +344,11 @@ export default function TransactionsClient() {
                     ? `- ${money(t.amount)}`
                     : money(t.amount);
 
-                const title = isTransfer
+                const title = transferAsMovement
+                  ? transferSide === "in"
+                    ? "Ingreso (transferencia)"
+                    : "Pago (transferencia)"
+                  : isTransfer
                   ? (() => {
                       const tr = t.__transfer;
                       if (!tr) return "Transferencia";
@@ -347,7 +359,7 @@ export default function TransactionsClient() {
                   : t.category?.name ?? (t.type === "income" ? "Ingreso" : "Pago");
 
                 const subtitleParts: string[] = [];
-                if (!isTransfer) {
+                if (!isTransfer || transferAsMovement) {
                   if (t.account?.name) subtitleParts.push(`Cuenta: ${t.account.name}`);
                   if (t.person?.name) subtitleParts.push(`Persona: ${t.person.name}`);
                   if (t.note) subtitleParts.push(t.note);
@@ -359,7 +371,7 @@ export default function TransactionsClient() {
                 const subtitle = subtitleParts.filter(Boolean).join(" · ");
 
                 const dateStr = (() => {
-                  const d = isTransfer ? t.__transfer?.date ?? t.date : t.date;
+                  const d = isTransfer && !transferAsMovement ? t.__transfer?.date ?? t.date : t.date;
                   try {
                     return new Date(d).toLocaleDateString("es-AR");
                   } catch {
@@ -382,21 +394,23 @@ export default function TransactionsClient() {
                         <div className={`text-sm font-semibold ${isNegative ? "text-red-700" : "text-emerald-700"}`}>
                           {signedLabel}
                         </div>
-                        <div className="mt-1 flex items-center justify-end gap-2">
-                          <Link
-                            href={`/transactions/${t._id}/edit?month=${encodeURIComponent(monthValue)}`}
-                            className="inline-flex items-center rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-1 text-xs font-semibold text-[rgb(var(--accent))] hover:opacity-90"
-                          >
-                            Editar
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => void removeTx(t._id)}
-                            className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:opacity-90"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
+                        {!isTransfer ? (
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            <Link
+                              href={`/transactions/${t._id}/edit?month=${encodeURIComponent(monthValue)}`}
+                              className="inline-flex items-center rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-1 text-xs font-semibold text-[rgb(var(--accent))] hover:opacity-90"
+                            >
+                              Editar
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => void removeTx(t._id)}
+                              className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:opacity-90"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
