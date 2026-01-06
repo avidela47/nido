@@ -126,7 +126,7 @@ export default function AccountLedgerModal({
 
           {!loading && data?.ok && Array.isArray(data.items) ? (
             <div className="space-y-2">
-              {data.items.map((it) => {
+              {data.items.map((it, idx) => {
                 const isNeg = it.signed < 0;
                 const label = it.type === "transfer" ? `Transfer (${it.transferSide})` : it.type === "income" ? "Ingreso" : "Pago";
                 const metaParts: string[] = [];
@@ -135,11 +135,29 @@ export default function AccountLedgerModal({
                 if (it.note) metaParts.push(it.note);
                 const meta = metaParts.filter(Boolean).join(" · ");
 
+                const prevRunning = idx > 0 ? (data.items?.[idx - 1]?.running ?? 0) : 0;
+                const crossedNegative = prevRunning >= 0 && it.running < 0;
+
                 return (
-                  <div key={it._id} className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-3">
+                  <div
+                    key={it._id}
+                    className={[
+                      "rounded-2xl border bg-white px-4 py-3",
+                      crossedNegative
+                        ? "border-red-300 bg-red-50"
+                        : "border-[rgb(var(--border))]",
+                    ].join(" ")}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold truncate">{label}</div>
+                        <div className="text-sm font-semibold truncate">
+                          {label}
+                          {crossedNegative ? (
+                            <span className="ml-2 rounded-full border border-red-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                              Se fue a negativo acá
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="mt-1 text-xs text-[rgb(var(--subtext))] truncate">{meta}</div>
                         <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
                           {new Date(it.date).toLocaleDateString("es-AR")}
