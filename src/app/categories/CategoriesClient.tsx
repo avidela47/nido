@@ -41,7 +41,14 @@ export default function CategoriesClient({ initial }: Props) {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
-        toast.push({ title: "Error al borrar categoría", description: json?.error ?? "No se pudo borrar.", variant: "error" });
+        const msg = (json?.error as string | undefined) ?? "No se pudo borrar.";
+        const title =
+          msg.toLowerCase().includes("pagos imputados") ||
+          msg.toLowerCase().includes("presupuesto")
+            ? "No se puede borrar"
+            : "Error al borrar categoría";
+
+        toast.push({ title, description: msg, variant: "error" });
         return;
       }
       setItems((p) => p.filter((x) => x._id !== c._id));

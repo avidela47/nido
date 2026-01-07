@@ -174,22 +174,28 @@ export async function DELETE(req: Request) {
     const db = await getDb();
     const _id = new ObjectId(id);
 
-    // Protección: si está en uso en transacciones o presupuestos, no borrar.
+    // Reglas:
+    // - Si tiene pagos/movimientos imputados => NO se puede borrar.
+    // - Si en presupuestos está en 0 (o no existe) => sí se puede borrar.
     const inTx = await db.collection("transactions").countDocuments({
       deletedAt: { $exists: false },
       categoryId: _id,
     });
     if (inTx > 0) {
       return NextResponse.json(
-        { ok: false, error: "No se puede borrar: la categoría está usada en movimientos" },
+        { ok: false, error: "Ya tiene pagos imputados, no se puede borrar" },
         { status: 409 }
       );
     }
 
-    const inBudgets = await db.collection("budgets").countDocuments({ categoryId: _id });
-    if (inBudgets > 0) {
+    // Presupuestos: solo bloquear si hay alguno con amount > 0
+    const budgetPositive = await db.collection("budgets").countDocuments({
+      categoryId: _id,
+      amount: { $gt: 0 },
+    });
+    if (budgetPositive > 0) {
       return NextResponse.json(
-        { ok: false, error: "No se puede borrar: la categoría está usada en presupuestos" },
+        { ok: false, error: "No se puede borrar: la categoría tiene presupuesto cargado" },
         { status: 409 }
       );
     }
