@@ -11,6 +11,7 @@ export default function PagosClient() {
   const [cuenta, setCuenta] = useState("");
   const [importe, setImporte] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [motivo, setMotivo] = useState("");
 
   // Estados para datos reales
   const [personasData, setPersonasData] = useState<{ _id: string; name: string }[]>([]);
@@ -25,6 +26,7 @@ export default function PagosClient() {
     category?: { id: string; name: string };
     amount: number;
     type: string;
+    note?: string;
   };
   const [pagos, setPagos] = useState<Pago[]>([]);
   // DEBUG: Mostrar estructura real de los pagos en consola
@@ -74,6 +76,7 @@ export default function PagosClient() {
           accountId: cuenta,
           amount: Number(importe),
           categoryId: categoria,
+          note: motivo.trim() ? motivo.trim() : undefined,
         }),
       });
       const data = await res.json();
@@ -83,6 +86,7 @@ export default function PagosClient() {
         setCategoria("");
         setCuenta("");
         setPersona("");
+        setMotivo("");
         // Refrescar lista de pagos
   const pagosRes = await fetch("/api/transactions?month=").then(r => r.json());
   if (pagosRes.ok && pagosRes.items) setPagos((pagosRes.items as Pago[]).filter((p) => p.type === "expense"));
@@ -126,7 +130,7 @@ export default function PagosClient() {
   return (
     <div className="max-w-4xl mx-auto mt-6">
       <SectionCard title="Pagos / Gastos" subtitle="Registrá un gasto realizado por una persona.">
-        <form className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" onSubmit={handleSubmit}>
+        <form className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-[rgb(var(--subtext))] mb-1">Persona</label>
             <select
@@ -179,6 +183,17 @@ export default function PagosClient() {
               ))}
             </select>
           </div>
+
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <label className="text-sm font-medium text-[rgb(var(--subtext))] mb-1">Motivo</label>
+            <input
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ej: Supermercado, farmacia, regalo..."
+              className="flex-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
+            />
+          </div>
+
           <button
             type="submit"
             className="rounded-2xl bg-linear-to-r from-[rgb(var(--brand))] to-[rgb(var(--brand-2))] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 w-full md:w-auto mt-4 md:mt-0"
@@ -211,18 +226,31 @@ export default function PagosClient() {
                   <th className="px-3 py-2 text-left">Persona</th>
                   <th className="px-3 py-2 text-left">Cuenta</th>
                   <th className="px-3 py-2 text-left">Categoría</th>
+                  <th className="px-3 py-2 text-left">Motivo</th>
                   <th className="px-3 py-2 text-right">Importe</th>
                 </tr>
               </thead>
               <tbody>
                 {pagosFiltrados.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-4 text-[rgb(var(--subtext))]">No hay pagos registrados</td></tr>
+                  <tr><td colSpan={6} className="text-center py-4 text-[rgb(var(--subtext))]">No hay pagos registrados</td></tr>
                 ) : pagosFiltrados.map((p, i) => (
                   <tr key={p._id || i} className="border-b last:border-b-0 border-[rgb(var(--border))]">
                     <td className="px-3 py-2">{p.date ? new Date(p.date).toLocaleDateString() : ""}</td>
                     <td className="px-3 py-2">{p.person?.name || "-"}</td>
                     <td className="px-3 py-2">{p.account?.name || "-"}</td>
                     <td className="px-3 py-2">{p.category?.name || "-"}</td>
+                    <td className="px-3 py-2 max-w-md">
+                      {p.note?.trim() ? (
+                        <span
+                          className="block truncate"
+                          title={p.note}
+                        >
+                          {p.note}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-right text-rose-600 font-semibold">${typeof p.amount === "number" ? p.amount.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2}) : p.amount}</td>
                   </tr>
                 ))}
