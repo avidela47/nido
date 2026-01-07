@@ -24,6 +24,9 @@ function currentMonthYYYYMM(): string {
 export default function ReportsClient({ people }: { people: PersonRow[] }) {
   const toast = useToast();
 
+  const incomeColor = "rgb(var(--brand))";
+  const expenseColor = "#fb7185";
+
   const [month, setMonth] = useState(currentMonthYYYYMM());
   const [personId, setPersonId] = useState("");
 
@@ -127,6 +130,18 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
             <div className="text-sm font-semibold">Ingresos vs Gastos (diario)</div>
             <div className="mt-1 text-xs text-[rgb(var(--subtext))]">Barras por día del mes</div>
           </div>
+
+          <div className="hidden md:flex items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--border))] bg-white px-3 py-1 text-xs text-[rgb(var(--subtext))]">
+              <span className="h-2 w-2 rounded-full" style={{ background: incomeColor }} />
+              Ingreso
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--border))] bg-white px-3 py-1 text-xs text-[rgb(var(--subtext))]">
+              <span className="h-2 w-2 rounded-full" style={{ background: expenseColor }} />
+              Gasto
+            </span>
+          </div>
+
           {loading ? <div className="text-xs text-[rgb(var(--subtext))]">Cargando…</div> : null}
         </div>
 
@@ -139,16 +154,29 @@ export default function ReportsClient({ people }: { people: PersonRow[] }) {
         <div className="mt-4 h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value, name) => {
-                if (name === "income") return [value, "Ingreso"];
-                if (name === "expense") return [value, "Gasto"];
-                return [value, name];
-              }} labelFormatter={label => label} />
-              <Bar dataKey="income" name="Ingreso" />
-              <Bar dataKey="expense" name="Gasto" />
+              <CartesianGrid stroke="rgb(var(--border))" strokeDasharray="3 3" />
+              <XAxis dataKey="day" tick={{ fontSize: 12, fill: "rgb(var(--subtext))" }} axisLine={{ stroke: "rgb(var(--border))" }} tickLine={{ stroke: "rgb(var(--border))" }} />
+              <YAxis tick={{ fontSize: 12, fill: "rgb(var(--subtext))" }} axisLine={{ stroke: "rgb(var(--border))" }} tickLine={{ stroke: "rgb(var(--border))" }} />
+              <Tooltip
+                labelStyle={{ color: "rgb(var(--text))", fontWeight: 600 }}
+                contentStyle={{
+                  background: "rgba(255,255,255,0.95)",
+                  border: "1px solid rgb(var(--border))",
+                  borderRadius: 16,
+                  boxShadow: "0 10px 30px rgba(15,23,42,0.10)",
+                }}
+                itemStyle={{ color: "rgb(var(--subtext))" }}
+                formatter={(value, name) => {
+                  const n = typeof value === "number" ? value : Number(value);
+                  const pretty = Number.isFinite(n) ? formatCurrencyARS(n) : String(value);
+                  if (name === "income") return [pretty, "Ingreso"];
+                  if (name === "expense") return [pretty, "Gasto"];
+                  return [pretty, name];
+                }}
+                labelFormatter={(label) => `Día ${label}`}
+              />
+              <Bar dataKey="income" name="Ingreso" fill={incomeColor} radius={[10, 10, 0, 0]} />
+              <Bar dataKey="expense" name="Gasto" fill={expenseColor} radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
