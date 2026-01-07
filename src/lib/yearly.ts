@@ -22,7 +22,7 @@ function yearRangeUTC(year: number): { start: Date; end: Date } {
 
 type TotalsRow = { _id: TxType; total: number };
 type ByMonthRow = { _id: { m: number; type: TxType }; total: number };
-type ByPersonRow = { _id: { personId: ObjectId; type: TxType }; total: number };
+type ByPersonRow = { _id: { personId?: ObjectId | null; type: TxType }; total: number };
 
 export async function getYearlySummary(year: number): Promise<YearlySummary> {
   if (!Number.isFinite(year) || year < 1970 || year > 2100) {
@@ -35,18 +35,18 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
   const totalsAgg = (await db
     .collection("transactions")
     .aggregate([
-      { $match: { date: { $gte: start, $lt: end } } },
+      { $match: { deletedAt: { $exists: false }, type: { $in: ["income", "expense"] }, date: { $gte: start, $lt: end } } },
       { $group: { _id: "$type", total: { $sum: "$amount" } } },
     ])
     .toArray()) as unknown as TotalsRow[];
 
-  const income = totalsAgg.find((r) => r._id === "income")?.total ?? 0;
-  const expense = totalsAgg.find((r) => r._id === "expense")?.total ?? 0;
+  const income = Math.abs(totalsAgg.find((r) => r._id === "income")?.total ?? 0);
+  const expense = Math.abs(totalsAgg.find((r) => r._id === "expense")?.total ?? 0);
 
   const byMonthAgg = (await db
     .collection("transactions")
     .aggregate([
-      { $match: { date: { $gte: start, $lt: end } } },
+      { $match: { deletedAt: { $exists: false }, type: { $in: ["income", "expense"] }, date: { $gte: start, $lt: end } } },
       {
         $group: {
           _id: { m: { $month: "$date" }, type: "$type" },
@@ -61,8 +61,8 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
     const m = i + 1;
     const month = `${year}-${String(m).padStart(2, "0")}`;
 
-    const inc = byMonthAgg.find((r) => r._id.m === m && r._id.type === "income")?.total ?? 0;
-    const exp = byMonthAgg.find((r) => r._id.m === m && r._id.type === "expense")?.total ?? 0;
+  const inc = Math.abs(byMonthAgg.find((r) => r._id.m === m && r._id.type === "income")?.total ?? 0);
+  const exp = Math.abs(byMonthAgg.find((r) => r._id.m === m && r._id.type === "expense")?.total ?? 0);
 
     return { month, income: inc, expense: exp, balance: inc - exp };
   });
@@ -70,7 +70,14 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
   const byPersonAgg = (await db
     .collection("transactions")
     .aggregate([
-      { $match: { date: { $gte: start, $lt: end } } },
+      {
+        $match: {
+          deletedAt: { $exists: false },
+          type: { $in: ["income", "expense"] },
+          personId: { $exists: true, $ne: null },
+          date: { $gte: start, $lt: end },
+        },
+      },
       {
         $group: {
           _id: { personId: "$personId", type: "$type" },
@@ -80,7 +87,13 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
     ])
     .toArray()) as unknown as ByPersonRow[];
 
-  const personIds = Array.from(new Set(byPersonAgg.map((r) => r._id.personId.toString())));
+  const personIds = Array.from(
+    new Set(
+      byPersonAgg
+        .map((r) => (r._id.personId instanceof ObjectId ? r._id.personId.toString() : ""))
+        .filter(Boolean)
+    )
+  );
 
   const peopleDocs = await db
     .collection("people")
@@ -97,9 +110,10 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
   >();
 
   for (const row of byPersonAgg) {
+    if (!(row._id.personId instanceof ObjectId)) continue;
     const pid = row._id.personId.toString();
     const type = row._id.type;
-    const total = Number(row.total) || 0;
+  const total = Math.abs(Number(row.total) || 0);
 
     const cur = personAcc.get(pid) ?? {
       personId: pid,

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line } from "recharts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Download, Moon, Sun, Sparkles, Info } from "lucide-react";
+import { Download, Sparkles, Info } from "lucide-react";
 import { MonthInput } from "../../../components/ui/MonthInput";
 import { useToast } from "../../../components/ui/Toast";
 import { formatCurrencyARS } from "../../../lib/format";
@@ -30,9 +30,6 @@ function TooltipChip({ text }: { text: string }) {
 
 export default function AdvancedReportsClient({ people, categories }: { people: PersonRow[]; categories: CategoryRow[] }) {
   const toast = useToast();
-
-  // 8E: tema oscuro (local a esta pantalla)
-  const [dark, setDark] = useState(false);
 
   // 8E: onboarding (localStorage)
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -91,15 +88,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
     const key = "nido_onboarding_reports_v1";
     const seen = localStorage.getItem(key);
     if (!seen) setShowOnboarding(true);
-
-    // tema persistente (local a reports)
-    const t = localStorage.getItem("nido_theme_reports");
-    if (t === "dark") setDark(true);
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("nido_theme_reports", dark ? "dark" : "light");
-  }, [dark]);
 
   async function loadCompare() {
     setLoadingCompare(true);
@@ -198,17 +187,14 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
     setShowOnboarding(false);
   }
 
-  const wrap = dark
-    ? "rounded-3xl border border-slate-800 bg-slate-950 text-slate-100 p-4"
-    : "rounded-3xl border border-[rgb(var(--border))] bg-white p-4";
-
-  const sub = dark ? "text-slate-300" : "text-[rgb(var(--subtext))]";
+  const wrap = "rounded-3xl border border-[rgb(var(--border))] bg-white p-4";
+  const sub = "text-[rgb(var(--subtext))]";
 
   const totalsA = compare?.monthA.totals;
   const totalsB = compare?.monthB.totals;
 
   return (
-    <div className={dark ? "space-y-4 text-slate-100" : "space-y-4"}>
+    <div className="space-y-4">
       {/* 8E: Header actions */}
       <div className={wrap}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -224,18 +210,6 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <button
-              type="button"
-              onClick={() => setDark((v) => !v)}
-              className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold" : "rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"}
-              title="Tema oscuro"
-            >
-              <span className="inline-flex items-center gap-2">
-                {dark ? <Moon size={16} /> : <Sun size={16} />}
-                Tema
-              </span>
-            </button>
-
             <a
               href="/transactions/new"
               className="rounded-2xl bg-linear-to-r from-[rgb(var(--brand))] to-[rgb(var(--brand-2))] px-4 py-2 text-center text-sm font-semibold text-white"
@@ -246,7 +220,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
 
             <a
               href="/export"
-              className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2 text-center text-sm font-semibold" : "rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-center text-sm font-semibold"}
+              className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-center text-sm font-semibold"
               title="CSV / Backup"
             >
               Export/Backup
@@ -265,7 +239,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
           <select
             value={personId}
             onChange={(e) => setPersonId(e.target.value)}
-            className={dark ? "mt-1 w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm" : "mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"}
+            className="mt-1 w-full rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
           >
             <option value="">Todas</option>
             {people.map((p) => (
@@ -292,7 +266,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                 label="Mes A"
                 value={monthA}
                 onChange={(e) => setMonthA(e.target.value)}
-                className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
+                className="mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
             <div>
@@ -301,7 +275,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                 label="Mes B"
                 value={monthB}
                 onChange={(e) => setMonthB(e.target.value)}
-                className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
+                className="mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
 
@@ -317,19 +291,19 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
 
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           {/* Month A */}
-          <div className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 p-3" : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3"}>
+          <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3">
             <div className="text-xs font-semibold">{compare?.monthA.month ?? monthA}</div>
             <div className={`mt-1 text-xs ${sub}`}>Ingresos / Gastos / Balance</div>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className={dark ? "rounded-xl bg-slate-950 px-3 py-2" : "rounded-xl bg-[rgb(var(--muted))] px-3 py-2"}>
+              <div className="rounded-xl bg-[rgb(var(--muted))] px-3 py-2">
                 <div className={`text-[11px] ${sub}`}>Ingresos</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(totalsA?.income ?? 0)}</div>
               </div>
-              <div className={dark ? "rounded-xl bg-slate-950 px-3 py-2" : "rounded-xl bg-[rgb(var(--muted))] px-3 py-2"}>
+              <div className="rounded-xl bg-[rgb(var(--muted))] px-3 py-2">
                 <div className={`text-[11px] ${sub}`}>Gastos</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(totalsA?.expense ?? 0))}</div>
               </div>
-              <div className={dark ? "rounded-xl bg-slate-950 px-3 py-2" : "rounded-xl bg-[rgb(var(--muted))] px-3 py-2"}>
+              <div className="rounded-xl bg-[rgb(var(--muted))] px-3 py-2">
                 <div className={`text-[11px] ${sub}`}>Balance</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(totalsA?.balance ?? 0)}</div>
               </div>
@@ -340,14 +314,10 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
               {(compare?.monthA.topCategories ?? []).slice(0, 6).map((c) => (
                 <div
                   key={c.categoryId}
-                  className={
-                    dark
-                      ? "rounded-2xl border border-slate-800 bg-slate-950 p-3 flex flex-col md:flex-row md:items-center md:justify-between"
-                      : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
-                  }
+                  className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
                 >
-                  <div className={dark ? "truncate text-sm font-semibold" : "truncate text-sm font-semibold text-[rgb(var(--text))]"}>{c.categoryName}</div>
-                  <div className={dark ? "mt-1 text-xs text-slate-300 md:mt-0" : "mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0"}>
+                  <div className="truncate text-sm font-semibold text-[rgb(var(--text))]">{c.categoryName}</div>
+                  <div className="mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0">
                     Gastado: <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</span>
                   </div>
                 </div>
@@ -357,19 +327,19 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
           </div>
 
           {/* Month B */}
-          <div className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 p-3" : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3"}>
+          <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3">
             <div className="text-xs font-semibold">{compare?.monthB.month ?? monthB}</div>
             <div className={`mt-1 text-xs ${sub}`}>Ingresos / Gastos / Balance</div>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className={dark ? "rounded-xl bg-slate-950 px-3 py-2" : "rounded-xl bg-[rgb(var(--muted))] px-3 py-2"}>
+              <div className="rounded-xl bg-[rgb(var(--muted))] px-3 py-2">
                 <div className={`text-[11px] ${sub}`}>Ingresos</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(totalsB?.income ?? 0)}</div>
               </div>
-              <div className={dark ? "rounded-xl bg-slate-950 px-3 py-2" : "rounded-xl bg-[rgb(var(--muted))] px-3 py-2"}>
+              <div className="rounded-xl bg-[rgb(var(--muted))] px-3 py-2">
                 <div className={`text-[11px] ${sub}`}>Gastos</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(totalsB?.expense ?? 0))}</div>
               </div>
-              <div className={dark ? "rounded-xl bg-slate-950 px-3 py-2" : "rounded-xl bg-[rgb(var(--muted))] px-3 py-2"}>
+              <div className="rounded-xl bg-[rgb(var(--muted))] px-3 py-2">
                 <div className={`text-[11px] ${sub}`}>Balance</div>
                 <div className="text-sm font-semibold tabular-nums">{formatCurrencyARS(totalsB?.balance ?? 0)}</div>
               </div>
@@ -380,14 +350,10 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
               {(compare?.monthB.topCategories ?? []).slice(0, 6).map((c) => (
                 <div
                   key={c.categoryId}
-                  className={
-                    dark
-                      ? "rounded-2xl border border-slate-800 bg-slate-950 p-3 flex flex-col md:flex-row md:items-center md:justify-between"
-                      : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
-                  }
+                  className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between"
                 >
-                  <div className={dark ? "truncate text-sm font-semibold" : "truncate text-sm font-semibold text-[rgb(var(--text))]"}>{c.categoryName}</div>
-                  <div className={dark ? "mt-1 text-xs text-slate-300 md:mt-0" : "mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0"}>
+                  <div className="truncate text-sm font-semibold text-[rgb(var(--text))]">{c.categoryName}</div>
+                  <div className="mt-1 text-xs text-[rgb(var(--subtext))] md:mt-0">
                     Gastado: <span className="font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(c.spent))}</span>
                   </div>
                 </div>
@@ -405,7 +371,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
               toast.push({ title: "Export", description: "Generando PNG…", variant: "ok" });
               await exportNodeAsPNG(refCompare.current, `nido-compare-${monthA}-vs-${monthB}.png`);
             }}
-            className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold" : "rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"}
+            className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"
           >
             <span className="inline-flex items-center gap-2">
               <Download size={16} /> PNG
@@ -442,7 +408,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
               <select
                 value={trendCategoryId}
                 onChange={(e) => setTrendCategoryId(e.target.value)}
-                className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"}
+                className="mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm"
               >
                 {categories.map((c) => (
                   <option key={c._id} value={c._id}>
@@ -458,7 +424,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                 label="Desde"
                 value={trendStartMonth}
                 onChange={(e) => setTrendStartMonth(e.target.value)}
-                className={dark ? "mt-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
+                className="mt-1 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
 
@@ -468,7 +434,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                 value={String(trendMonths)}
                 onChange={(e) => setTrendMonths(Number(e.target.value || "12"))}
                 inputMode="numeric"
-                className={dark ? "mt-1 w-24 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 w-24 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
+                className="mt-1 w-24 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
 
@@ -502,7 +468,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
               toast.push({ title: "Export", description: "Generando PNG…", variant: "ok" });
               await exportNodeAsPNG(refTrend.current, `nido-trend-${trendStartMonth}-${trendMonths}m.png`);
             }}
-            className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold" : "rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"}
+            className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"
           >
             <span className="inline-flex items-center gap-2">
               <Download size={16} /> PNG
@@ -540,7 +506,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 inputMode="numeric"
-                className={dark ? "mt-1 w-28 rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold" : "mt-1 w-28 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"}
+                className="mt-1 w-28 rounded-2xl border border-[rgb(var(--border))] bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
 
@@ -555,15 +521,15 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 p-3" : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3"}>
+          <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3">
             <div className={`text-xs ${sub}`}>Ingreso anual</div>
             <div className="mt-1 text-lg font-semibold tabular-nums">{formatCurrencyARS(yearData?.totals.income ?? 0)}</div>
           </div>
-          <div className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 p-3" : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3"}>
+          <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3">
             <div className={`text-xs ${sub}`}>Gasto anual</div>
             <div className="mt-1 text-lg font-semibold tabular-nums">{formatCurrencyARS(-Math.abs(yearData?.totals.expense ?? 0))}</div>
           </div>
-          <div className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 p-3" : "rounded-2xl border border-[rgb(var(--border))] bg-white p-3"}>
+          <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-3">
             <div className={`text-xs ${sub}`}>Balance anual</div>
             <div className="mt-1 text-lg font-semibold tabular-nums">{formatCurrencyARS(yearData?.totals.balance ?? 0)}</div>
           </div>
@@ -590,7 +556,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
               toast.push({ title: "Export", description: "Generando PNG…", variant: "ok" });
               await exportNodeAsPNG(refYear.current, `nido-year-${year}.png`);
             }}
-            className={dark ? "rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold" : "rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"}
+            className="rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-2 text-sm font-semibold"
           >
             <span className="inline-flex items-center gap-2">
               <Download size={16} /> PNG
@@ -616,7 +582,7 @@ export default function AdvancedReportsClient({ people, categories }: { people: 
       {/* 8E: Onboarding modal */}
       {showOnboarding ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className={dark ? "w-full max-w-xl rounded-3xl border border-slate-800 bg-slate-950 p-5" : "w-full max-w-xl rounded-3xl border border-[rgb(var(--border))] bg-white p-5"}>
+          <div className="w-full max-w-xl rounded-3xl border border-[rgb(var(--border))] bg-white p-5">
             <div className="text-sm font-semibold">Bienvenido a Reportes avanzados</div>
             <div className={`mt-2 text-sm ${sub}`}>
               1) Compará dos meses (A vs B) <br />

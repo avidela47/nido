@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Search, Moon, Sun, ArrowRight } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useTheme } from "../theme/ThemeProvider";
 
 export function Topbar() {
-  const { isDark, toggle } = useTheme();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const router = useRouter();
@@ -82,18 +80,7 @@ export function Topbar() {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Theme toggle (ACA PROBÁS) */}
-          <button
-            type="button"
-            onClick={toggle}
-            className="inline-flex items-center justify-center rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--muted))] p-2"
-            title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            aria-label="Cambiar tema"
-          >
-            {isDark ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
-        </div>
+        <div className="flex items-center gap-2" />
       </div>
     </header>
   );

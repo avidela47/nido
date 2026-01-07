@@ -48,7 +48,7 @@ export default async function YearPage({
                 className="flex flex-col gap-2 rounded-2xl border border-[rgb(var(--border))] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between"
               >
                 <div className="text-sm font-semibold">{m.month}</div>
-                <div className="grid grid-cols-3 gap-2 text-xs md:w-[520px]">
+                <div className="grid grid-cols-3 gap-2 text-xs md:w-130">
                   <Mini title="Ingresos" value={formatCurrencyARS(m.income)} positive />
                   <Mini title="Gastos" value={formatCurrencyARS(-Math.abs(m.expense))} />
                   <Mini title="Balance" value={formatCurrencyARS(m.balance)} positive={m.balance >= 0} />

@@ -22,18 +22,6 @@ type ThemeContextValue = {
 const STORAGE_KEY = "nido_theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function readPreferredTheme(): Theme {
-  if (typeof document !== "undefined" && document.documentElement.classList.contains("dark")) {
-    return "dark";
-  }
-
-  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)")?.matches) {
-    return "dark";
-  }
-
-  return "light";
-}
-
 function applyThemeClass(next: Theme) {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", next === "dark");
@@ -55,22 +43,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Aplicar preferencia *después* de hidratar para evitar mismatch.
-    let preferred: Theme | null = null;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored === "dark" || stored === "light") {
-        preferred = stored;
-      }
-    } catch {
-      /* ignore */
-    }
-
-    const nextTheme = preferred ?? readPreferredTheme();
-    // Evitamos setState directamente en el cuerpo del effect (regla/lint).
-    // El timeout también garantiza que el primer render del cliente coincida con el SSR.
+    // Modo oscuro deshabilitado globalmente: forzamos siempre "light".
+    // - Si el usuario tenía `nido_theme=dark`, lo sobrescribimos.
+    // - Si el <html> tenía la clase `dark`, la removemos.
     const id = window.setTimeout(() => {
-      setThemeState(nextTheme);
+      setThemeState("light");
+      applyThemeClass("light");
+      persistTheme("light");
       setHydrated(true);
     }, 0);
 
@@ -78,16 +57,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    applyThemeClass(theme);
-    persistTheme(theme);
+    // Blindaje extra: aunque alguien intente setear theme a "dark",
+    // la clase y la persistencia se mantienen en light.
+    applyThemeClass("light");
+    persistTheme("light");
   }, [theme]);
 
   const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
+    // Soportamos la API para no romper imports, pero ignoramos "dark".
+    setThemeState(next === "dark" ? "light" : next);
   }, []);
 
   const toggle = useCallback(() => {
-    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+    // Toggle deshabilitado: se queda en light.
+    setThemeState("light");
   }, []);
 
   const value = useMemo(

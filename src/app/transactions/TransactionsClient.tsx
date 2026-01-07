@@ -14,7 +14,7 @@ type AccountRow = {
   person?: { _id: string; name: string } | null;
 };
 
-type TxItem = {
+export type TxItem = {
   _id: string;
   date: string;
   type: "income" | "expense" | "transfer";
