@@ -7,8 +7,8 @@ import { currentMonthYYYYMM } from "../lib/dateRanges";
 import { Suspense } from "react";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 import { KpiCard } from "../components/ui/KpiCard";
-export default async function Page({ searchParams }: { searchParams?: { month?: string } }) {
-  const sp = searchParams ?? {};
+export default async function Page({ searchParams }: { searchParams?: Promise<{ month?: string }> }) {
+  const sp = (await searchParams) ?? {};
   const month = sp.month ?? currentMonthYYYYMM();
   const summary = await getMonthlySummary(month);
 

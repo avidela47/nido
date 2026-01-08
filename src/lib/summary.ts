@@ -65,19 +65,49 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   const expense = totalsAgg.find((r) => r._id === "expense")?.total ?? 0;
 
   // Por persona + tipo
+  // Por persona: incluimos transacciones donde o bien hay personId explícito,
+  // o bien son transferencias y la cuenta tiene una persona asignada.
+  // Para transferencias convertimos el tipo según transferSide: "in" -> income, "out" -> expense.
   const byPersonAgg = (await db
     .collection("transactions")
     .aggregate([
+      { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
+      // Traer la cuenta para identificar a la persona de la cuenta
       {
-        $match: {
-          deletedAt: { $exists: false },
-          personId: { $exists: true, $ne: null },
-          date: { $gte: start, $lt: end },
+        $lookup: {
+          from: "accounts",
+          localField: "accountId",
+          foreignField: "_id",
+          as: "_acc",
         },
       },
+      { $unwind: { path: "$_acc", preserveNullAndEmptyArrays: true } },
+      // Resolver personId: preferimos tx.personId, si no existe usamos la persona de la cuenta
+      {
+        $addFields: {
+          resolvedPersonId: { $cond: [{ $ifNull: ["$personId", false] }, "$personId", "$_acc.person"] },
+          resolvedType: {
+            $cond: [
+              { $eq: ["$type", "transfer"] },
+              {
+                $cond: [
+                  { $eq: ["$transferSide", "in"] },
+                  "income",
+                  {
+                    $cond: [{ $eq: ["$transferSide", "out"] }, "expense", "$type"]
+                  }
+                ]
+              },
+              "$type",
+            ],
+          },
+        },
+      },
+      // Filtramos solo filas con resolvedPersonId
+      { $match: { resolvedPersonId: { $exists: true, $ne: null } } },
       {
         $group: {
-          _id: { personId: "$personId", type: "$type" },
+          _id: { personId: "$resolvedPersonId", type: "$resolvedType" },
           total: { $sum: "$amount" },
         },
       },
@@ -87,9 +117,18 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   const personIds = Array.from(
     new Set(
       byPersonAgg
-        .map((r) => r._id?.personId)
-        .filter((id): id is ObjectId => !!id)
-        .map((id) => id.toString())
+      .map((r) => {
+        const raw = r._id?.personId as unknown;
+          if (!raw) return "";
+        // ObjectId instance
+        if (raw instanceof ObjectId) return (raw as ObjectId).toString();
+        // If account.person was stored as {_id: ObjectId, name}
+  if (typeof raw === "object" && raw && "_id" in (raw as object)) return String((raw as { _id?: unknown })._id);
+        // string id
+        if (typeof raw === "string") return raw;
+          return "";
+        })
+        .filter(Boolean)
     )
   );
 
@@ -109,9 +148,13 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   >();
 
   for (const row of byPersonAgg) {
-    const rawId = row._id?.personId;
+  const rawId = row._id?.personId as unknown;
     if (!rawId) continue;
-    const pid = rawId.toString();
+    let pid = "";
+    if (rawId instanceof ObjectId) pid = rawId.toString();
+  else if (typeof rawId === "object" && rawId && "_id" in (rawId as object)) pid = String((rawId as { _id?: unknown })._id);
+    else if (typeof rawId === "string") pid = rawId;
+    if (!pid) continue;
     const type = row._id.type;
     const total = Number(row.total) || 0;
 

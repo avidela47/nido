@@ -231,36 +231,55 @@ export default function PersonSummaryModal({
       />
 
       <div className="relative w-full max-w-xl">
-        <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_12px_44px_rgba(0,0,0,0.22)]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Resumen de</div>
-              <div className="truncate text-lg font-semibold">{title}</div>
-              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-                Movimientos totales: <span className="font-semibold tabular-nums">{Number(person.txCount) || 0}</span>
-              </div>
+  <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_12px_44px_rgba(0,0,0,0.22)] max-h-[calc(100vh-3.5rem)] overflow-y-auto pb-6">
+          {/* Title (scrollable) */}
+          <div className="mt-0 mb-2">
+            <div className="text-xs font-semibold text-[rgb(var(--subtext))]">Resumen de</div>
+            <div className="truncate text-lg font-semibold">{title}</div>
+            <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
+              Movimientos totales: <span className="font-semibold tabular-nums">{Number(person.txCount) || 0}</span>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgb(var(--border))] bg-white"
-              title="Cerrar"
-            >
-              <X size={18} />
-            </button>
           </div>
 
-          {/* Tabs */}
-          <div className="mt-4 flex gap-2">
-            <button
-              className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === 'resumen' ? 'bg-[rgb(var(--brand))] text-white' : 'bg-white border border-[rgb(var(--border))] text-[rgb(var(--text))]'}`}
-              onClick={() => setTab('resumen')}
-            >Resumen</button>
-            <button
-              className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === 'movimientos' ? 'bg-[rgb(var(--brand))] text-white' : 'bg-white border border-[rgb(var(--border))] text-[rgb(var(--text))]'}`}
-              onClick={() => setTab('movimientos')}
-            >Movimientos por cuentas</button>
+          {/* Tabs + close button (no sticky) */}
+          <div className="mt-0 mb-2 px-0 py-1 bg-[rgb(var(--card))]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex gap-2">
+                <button
+                  className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === 'resumen' ? 'bg-[rgb(var(--brand))] text-white' : 'bg-white border border-[rgb(var(--border))] text-[rgb(var(--text))]'}`}
+                  onClick={() => setTab('resumen')}
+                >Resumen</button>
+                <button
+                  className={`rounded-2xl px-3 py-1 text-xs font-semibold ${tab === 'movimientos' ? 'bg-[rgb(var(--brand))] text-white' : 'bg-white border border-[rgb(var(--border))] text-[rgb(var(--text))]'}`}
+                  onClick={() => setTab('movimientos')}
+                >Movimientos por cuentas</button>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgb(var(--border))] bg-white"
+                title="Cerrar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Mes selector (no fijo) */}
+          <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-[rgb(var(--subtext))]">
+                <CalendarDays size={16} /> Mes
+              </div>
+              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">{monthLabel}</div>
+            </div>
+
+            <MonthInput
+              label={undefined}
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            />
           </div>
 
           {tab === 'resumen' && (
@@ -360,24 +379,10 @@ export default function PersonSummaryModal({
                   </div>
                 </>
               ) : (
-                <div className="text-sm text-[rgb(var(--subtext))]">Sin movimientos en el mes.</div>
-              )}
-            </div>
-          )}
-          <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-[rgb(var(--subtext))]">
-                <CalendarDays size={16} /> Mes
+                  <div className="text-sm text-[rgb(var(--subtext))]">Sin movimientos en el mes.</div>
+                )}
               </div>
-              <div className="mt-1 text-xs text-[rgb(var(--subtext))]">{monthLabel}</div>
-            </div>
-
-            <MonthInput
-              label={undefined}
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-            />
-          </div>
+            )}
 
           {/* Stats del mes */}
           <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -458,6 +463,8 @@ export default function PersonSummaryModal({
               </div>
             )}
           </div>
+
+          
         </div>
       </div>
     </div>

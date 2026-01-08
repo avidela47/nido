@@ -28,10 +28,10 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
   if (!Number.isFinite(year) || year < 1970 || year > 2100) {
     throw new Error("Año inválido");
   }
-
   const db = await getDb();
   const { start, end } = yearRangeUTC(year);
 
+  // Totales año
   const totalsAgg = (await db
     .collection("transactions")
     .aggregate([
@@ -43,47 +43,61 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
   const income = Math.abs(totalsAgg.find((r) => r._id === "income")?.total ?? 0);
   const expense = Math.abs(totalsAgg.find((r) => r._id === "expense")?.total ?? 0);
 
+  // Por mes
   const byMonthAgg = (await db
     .collection("transactions")
     .aggregate([
       { $match: { deletedAt: { $exists: false }, type: { $in: ["income", "expense"] }, date: { $gte: start, $lt: end } } },
-      {
-        $group: {
-          _id: { m: { $month: "$date" }, type: "$type" },
-          total: { $sum: "$amount" },
-        },
-      },
+      { $project: { m: { $month: "$date" }, type: "$type", amount: "$amount" } },
+      { $group: { _id: { m: "$m", type: "$type" }, total: { $sum: "$amount" } } },
     ])
     .toArray()) as unknown as ByMonthRow[];
 
-  // 12 meses siempre
-  const byMonth = Array.from({ length: 12 }, (_, i) => {
-    const m = i + 1;
+  const byMonth = Array.from({ length: 12 }).map((_, idx) => {
+    const m = idx + 1; // $month returns 1..12
     const month = `${year}-${String(m).padStart(2, "0")}`;
-
-  const inc = Math.abs(byMonthAgg.find((r) => r._id.m === m && r._id.type === "income")?.total ?? 0);
-  const exp = Math.abs(byMonthAgg.find((r) => r._id.m === m && r._id.type === "expense")?.total ?? 0);
-
+    const inc = Math.abs(byMonthAgg.find((r) => r._id.m === m && r._id.type === "income")?.total ?? 0);
+    const exp = Math.abs(byMonthAgg.find((r) => r._id.m === m && r._id.type === "expense")?.total ?? 0);
     return { month, income: inc, expense: exp, balance: inc - exp };
   });
 
+  // Por persona: resolvemos person por tx.personId o por la cuenta
+  // y convertimos transfer + transferSide a income/expense según corresponda.
   const byPersonAgg = (await db
     .collection("transactions")
     .aggregate([
+      { $match: { deletedAt: { $exists: false }, date: { $gte: start, $lt: end } } },
       {
-        $match: {
-          deletedAt: { $exists: false },
-          type: { $in: ["income", "expense"] },
-          personId: { $exists: true, $ne: null },
-          date: { $gte: start, $lt: end },
+        $lookup: {
+          from: "accounts",
+          localField: "accountId",
+          foreignField: "_id",
+          as: "_acc",
         },
       },
+      { $unwind: { path: "$_acc", preserveNullAndEmptyArrays: true } },
       {
-        $group: {
-          _id: { personId: "$personId", type: "$type" },
-          total: { $sum: "$amount" },
+        $addFields: {
+          resolvedPersonId: { $cond: [{ $ifNull: ["$personId", false] }, "$personId", "$_acc.person"] },
+          resolvedType: {
+            $cond: [
+              { $eq: ["$type", "transfer"] },
+              {
+                $cond: [
+                  { $eq: ["$transferSide", "in"] },
+                  "income",
+                  {
+                    $cond: [{ $eq: ["$transferSide", "out"] }, "expense", "$type"]
+                  }
+                ]
+              },
+              "$type",
+            ],
+          },
         },
       },
+      { $match: { resolvedPersonId: { $exists: true, $ne: null } } },
+      { $group: { _id: { personId: "$resolvedPersonId", type: "$resolvedType" }, total: { $sum: "$amount" } } },
     ])
     .toArray()) as unknown as ByPersonRow[];
 
@@ -113,7 +127,7 @@ export async function getYearlySummary(year: number): Promise<YearlySummary> {
     if (!(row._id.personId instanceof ObjectId)) continue;
     const pid = row._id.personId.toString();
     const type = row._id.type;
-  const total = Math.abs(Number(row.total) || 0);
+    const total = Math.abs(Number(row.total) || 0);
 
     const cur = personAcc.get(pid) ?? {
       personId: pid,
