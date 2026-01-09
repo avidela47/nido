@@ -5,9 +5,12 @@ interface KpiCardProps {
   value: string;
   positive?: boolean;
   icon?: React.ReactNode;
+  hideValue?: boolean;
 }
 
-export function KpiCard({ title, value, positive, icon }: KpiCardProps) {
+export function KpiCard({ title, value, positive, icon, hideValue = false }: KpiCardProps) {
+  const display = hideValue ? "••••••" : value;
+
   return (
     <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
       <div className="flex items-center justify-between gap-3">
@@ -19,7 +22,7 @@ export function KpiCard({ title, value, positive, icon }: KpiCardProps) {
         )}
       </div>
       <div className={`mt-3 text-2xl font-semibold tabular-nums ${positive ? "text-emerald-600" : ""}`}>
-        {value}
+        {display}
       </div>
     </div>
   );

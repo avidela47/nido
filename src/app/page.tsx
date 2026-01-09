@@ -5,8 +5,8 @@ import { getMonthlySummary } from "../lib/summary";
 import { formatCurrencyARS } from "../lib/format";
 import { currentMonthYYYYMM } from "../lib/dateRanges";
 import { Suspense } from "react";
-import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
-import { KpiCard } from "../components/ui/KpiCard";
+import { Wallet } from "lucide-react";
+import DashboardKpisClient from "../components/dashboard/DashboardKpisClient";
 export default async function Page({ searchParams }: { searchParams?: Promise<{ month?: string }> }) {
   const sp = (await searchParams) ?? {};
   const month = sp.month ?? currentMonthYYYYMM();
@@ -25,25 +25,7 @@ export default async function Page({ searchParams }: { searchParams?: Promise<{ 
         </Suspense>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <KpiCard
-          title="Ingresos (Mes)"
-          value={formatCurrencyARS(summary.totals.income)}
-          icon={<ArrowUpRight size={18} />}
-          positive
-        />
-        <KpiCard
-          title="Gastos (Mes)"
-          value={formatCurrencyARS(-Math.abs(summary.totals.expense))}
-          icon={<ArrowDownRight size={18} />}
-        />
-        <KpiCard
-          title="Balance (Mes)"
-          value={formatCurrencyARS(summary.totals.balance)}
-          icon={<Wallet size={18} />}
-          positive={summary.totals.balance >= 0}
-        />
-      </div>
+      <DashboardKpisClient totals={summary.totals} />
 
   <div className="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="mb-3">
