@@ -16,6 +16,7 @@ import {
   Sparkles,
   CreditCard,
 } from "lucide-react";
+import { currentMonthYYYYMM } from "../../lib/dateRanges";
 
 type NavItem = {
   href: string;
@@ -31,6 +32,18 @@ function isActive(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
+
+  const monthParam = (() => {
+    if (typeof window === "undefined") return null;
+    return currentMonthYYYYMM();
+  })();
+
+  function withMonth(href: string) {
+    const needsMonth = href === "/accounts" || href === "/transactions" || href === "/pagos";
+    if (!needsMonth || !monthParam) return href;
+    const sep = href.includes("?") ? "&" : "?";
+    return `${href}${sep}month=${encodeURIComponent(monthParam)}`;
+  }
 
   const items: NavItem[] = [
     { href: "/", label: "Inicio", icon: Home },
@@ -81,7 +94,7 @@ export function Sidebar() {
               return (
                 <Link
                   key={it.href}
-                  href={it.href}
+                  href={withMonth(it.href)}
                   className={[
                     "group flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition",
                     active

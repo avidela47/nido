@@ -13,6 +13,8 @@ type SummaryItem = {
   income: number;
   expense: number;
   net: number;
+  openingBalance: number;
+  closingBalance: number;
   count: number;
   last: Array<{ _id: string; type: "income" | "expense"; amount: number; date: string; note: string }>;
 };
@@ -61,11 +63,31 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
   const [items, setItems] = useState<Account[]>(initial);
 
   const [month, setMonth] = useState<string>(() => {
+    const fromUrl = params.get("month");
+    if (fromUrl) return fromUrl;
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     return `${y}-${m}`;
   });
+
+  useEffect(() => {
+    const fromUrl = params.get("month");
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const current = `${y}-${m}`;
+    if (!fromUrl) {
+      const sp = new URLSearchParams(params.toString());
+      sp.set("month", current);
+      setMonth(current);
+      router.replace(`/accounts?${sp.toString()}`);
+      return;
+    }
+    if (fromUrl !== month) {
+      setMonth(fromUrl);
+    }
+  }, [params, month, router]);
 
   const [summary, setSummary] = useState<SummaryItem[] | null>(null);
   const [summaryError, setSummaryError] = useState<string>("");
@@ -118,7 +140,10 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
     (async () => {
       try {
-        const res = await fetch(`/api/accounts/summary?month=${encodeURIComponent(month)}`);
+        const res = await fetch(`/api/accounts/summary?month=${encodeURIComponent(month)}&t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        });
         const json = (await res.json().catch(() => null)) as
           | { ok: true; items: SummaryItem[] }
           | { ok: false; error?: string }
@@ -331,7 +356,13 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
 
             <MonthInput
               value={month}
-              onChange={(e) => setMonth(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                const sp = new URLSearchParams(params.toString());
+                sp.set("month", next);
+                setMonth(next);
+                router.replace(`/accounts?${sp.toString()}`);
+              }}
             />
         </div>
 
@@ -376,13 +407,21 @@ export default function AccountsClient({ initial, people }: { initial: Account[]
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-[rgb(var(--subtext))]">
-                      {s.count} mov. · Neto: <span className="font-semibold">{money(s.net)}</span>
+                      {s.count} mov. · Variación del mes: <span className="font-semibold">{money(s.net)}</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-[rgb(var(--subtext))]">
+                      Saldo inicial: <span className="font-semibold">{money(s.openingBalance)}</span>
+                      <span className="mx-2">·</span>
+                      Saldo final: <span className="font-semibold">{money(s.closingBalance)}</span>
                     </div>
                   </a>
 
                   <div className="text-right text-xs">
                     <div className="text-green-700">+ {money(s.income)}</div>
                     <div className="text-red-700">Pagos: {money(s.expense)}</div>
+                    <div className="mt-1 font-semibold text-[rgb(var(--accent))]">
+                      Saldo final: {money(s.closingBalance)}
+                    </div>
                     <div className="mt-2 flex justify-end">
                       <button
                         type="button"

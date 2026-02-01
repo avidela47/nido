@@ -1,6 +1,8 @@
 import { SectionCard } from "../../components/ui/SectionCard";
 import { getDb } from "../../lib/mongodb";
 import AccountsClient from "./AccountsClient";
+import { currentMonthYYYYMM } from "../../lib/dateRanges";
+import { redirect } from "next/navigation";
 
 type AccountType = "cash" | "bank" | "wallet" | "credit";
 
@@ -23,7 +25,12 @@ function toInt(v: unknown): number {
   return Number.isFinite(n) ? Math.trunc(n) : NaN;
 }
 
-export default async function AccountsPage() {
+export default async function AccountsPage({ searchParams }: { searchParams?: Promise<{ month?: string }> }) {
+  const sp = (await searchParams) ?? {};
+  const month = sp.month ?? "";
+  if (!month) {
+    redirect(`/accounts?month=${currentMonthYYYYMM()}`);
+  }
   const db = await getDb();
 
   const [raw, peopleRaw] = await Promise.all([

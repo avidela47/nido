@@ -6,6 +6,7 @@ import { KpiCard } from "../ui/KpiCard";
 type Totals = {
   income: number;
   expense: number;
+  openingBalance: number;
   balance: number;
 };
 
@@ -39,7 +40,14 @@ export default function DashboardKpisClient({ totals }: { totals: Totals }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          title="Saldo inicial (Mes)"
+          value={new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'}).format(totals.openingBalance)}
+          icon={<Wallet size={18} />}
+          positive={totals.openingBalance >= 0}
+          hideValue={hidden}
+        />
         <KpiCard
           title="Ingresos (Mes)"
           value={new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'}).format(totals.income)}
@@ -54,7 +62,7 @@ export default function DashboardKpisClient({ totals }: { totals: Totals }) {
           hideValue={hidden}
         />
         <KpiCard
-          title="Balance (Mes)"
+          title="Saldo final (Mes)"
           value={new Intl.NumberFormat('es-AR', {style: 'currency', currency: 'ARS'}).format(totals.balance)}
           icon={<Wallet size={18} />}
           positive={totals.balance >= 0}

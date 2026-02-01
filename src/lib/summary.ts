@@ -9,6 +9,7 @@ export type MonthlySummary = {
   totals: {
     income: number;
     expense: number;
+    openingBalance: number;
     balance: number;
   };
   byPerson: PersonSummaryRow[];
@@ -16,6 +17,8 @@ export type MonthlySummary = {
   byAccount: Array<{
     accountId: string;
     accountName: string;
+    openingBalance: number;
+    monthNet: number;
     balance: number;
     personName?: string;
     type?: string;
@@ -261,17 +264,87 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
       },
     },
   ]).toArray();
-  type AccountAggRow = { _id: ObjectId; balance: number };
+  const openingAgg = await db.collection("transactions").aggregate([
+    {
+      $addFields: {
+        dateObj: {
+          $convert: { input: "$date", to: "date", onError: null, onNull: null },
+        },
+      },
+    },
+    {
+      $match: {
+        deletedAt: { $exists: false },
+        dateObj: { $ne: null, $lt: start },
+      },
+    },
+    {
+      $group: {
+        _id: "$accountId",
+        balance: {
+          $sum: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$type", "income"] }, then: "$amount" },
+                { case: { $eq: ["$type", "expense"] }, then: { $multiply: ["$amount", -1] } },
+                {
+                  case: {
+                    $and: [
+                      { $eq: ["$type", "transfer"] },
+                      { $eq: ["$transferSide", "in"] },
+                    ],
+                  },
+                  then: "$amount",
+                },
+                {
+                  case: {
+                    $and: [
+                      { $eq: ["$type", "transfer"] },
+                      { $eq: ["$transferSide", "out"] },
+                    ],
+                  },
+                  then: { $multiply: ["$amount", -1] },
+                },
+              ],
+              default: 0,
+            },
+          },
+        },
+      },
+    },
+  ]).toArray();
+  type AccountAggRow = { _id: ObjectId | string | null; balance: number };
   // Buscar personas faltantes antes de mapear
   // Variable missingPersonIds eliminada porque no se usa
   // Variable validPersonIds eliminada porque no se usa
   // Variables extraPeople y ExtraPersonDoc eliminadas porque no se usan
   // extraPeopleMap ya no se usa
 
-  const byAccount: Array<{ accountId: string; accountName: string; balance: number; personName?: string; type?: string }> = [];
-  for (const row of accountAgg as AccountAggRow[]) {
-    const id = row._id?.toString();
+  const accountKey = (raw: unknown): string => {
+    if (raw instanceof ObjectId) return raw.toString();
+    if (typeof raw === "string" && raw.trim()) return raw;
+    return "__none__";
+  };
+
+  const openingMap = new Map<string, number>(
+    (openingAgg as AccountAggRow[])
+      .filter((r) => r && r._id !== undefined)
+      .map((r) => [accountKey(r._id), Number(r.balance) || 0])
+  );
+  const openingTotal = Array.from(openingMap.values()).reduce((acc, v) => acc + v, 0);
+
+  const monthNetMap = new Map<string, number>(
+    (accountAgg as AccountAggRow[])
+      .filter((r) => r && r._id !== undefined)
+      .map((r) => [accountKey(r._id), Number(r.balance) || 0])
+  );
+
+  const byAccount: Array<{ accountId: string; accountName: string; openingBalance: number; monthNet: number; balance: number; personName?: string; type?: string }> = [];
+  for (const accRow of accounts as AccountDoc[]) {
+    const id = accRow._id?.toString();
     const acc = accountMap.get(id);
+    const openingBalance = openingMap.get(id) ?? 0;
+    const monthNet = monthNetMap.get(id) ?? 0;
     let personName = "Sin asignar";
     // Soportar ambos formatos: ObjectId o { _id, name }
     if (acc?.person) {
@@ -301,7 +374,9 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
     byAccount.push({
       accountId: id,
       accountName: acc?.name ?? "—",
-      balance: row.balance,
+      openingBalance,
+      monthNet,
+      balance: openingBalance + monthNet,
       personName,
       type: acc?.type ?? undefined,
     });
@@ -353,7 +428,8 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
     totals: {
       income,
       expense,
-      balance: income - expense,
+      openingBalance: openingTotal,
+      balance: openingTotal + (income - expense),
     },
     byPerson,
     byCategory,
